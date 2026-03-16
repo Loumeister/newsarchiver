@@ -5,8 +5,40 @@
  */
 
 import { saveSnapshot } from './lib/storage.js';
-import { collectAssetUrls, fetchAllAssets } from './lib/assets.js';
-import { rewriteHtml } from './lib/rewriter.js';
+import { fetchAllAssets } from './lib/assets.js';
+
+/**
+ * Ensure the offscreen document (which has DOM access) is created.
+ */
+async function ensureOffscreen() {
+  const existing = await chrome.offscreen.hasDocument();
+  if (!existing) {
+    await chrome.offscreen.createDocument({
+      url: 'offscreen.html',
+      reasons: ['DOM_PARSER'],
+      justification: 'Parse and rewrite HTML for archiving',
+    });
+  }
+}
+
+/**
+ * Send a message to the offscreen document and return its response.
+ */
+async function sendToOffscreen(action, data) {
+  await ensureOffscreen();
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage(
+      { target: 'offscreen', action, data },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+        } else {
+          resolve(response);
+        }
+      }
+    );
+  });
+}
 
 /**
  * Generate a short random snapshot ID (6 hex chars).
@@ -31,6 +63,8 @@ const pendingCaptures = new Map();
 
 // Listen for messages from content scripts and popup
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.target === 'offscreen') return;
+
   if (message.action === 'archive') {
     // Triggered by popup — start the archive pipeline
     handleArchive(message.tabId)
@@ -66,20 +100,23 @@ async function handleArchive(tabId) {
   // Step 2: Inject content script to capture page HTML
   const pageData = await injectAndCapture(tabId);
 
-  // Step 3: Collect and fetch assets
-  const assetUrls = collectAssetUrls(pageData.html, pageData.url);
+  // Step 3: Collect and fetch assets (collectAssetUrls runs in offscreen doc for DOM access)
+  const { urls: assetUrls } = await sendToOffscreen('collectAssetUrls', {
+    html: pageData.html,
+    baseUrl: pageData.url,
+  });
   const assetMap = await fetchAllAssets(assetUrls, snapshotId);
 
-  // Step 4: Rewrite HTML
+  // Step 4: Rewrite HTML (runs in offscreen doc for DOM access)
   const timestamp = new Date().toISOString();
-  const rewrittenHtml = rewriteHtml(
-    pageData.html,
-    assetMap,
+  const { html: rewrittenHtml } = await sendToOffscreen('rewriteHtml', {
+    html: pageData.html,
+    assetMapEntries: Array.from(assetMap.entries()),
     snapshotId,
-    pageData.url,
+    originalUrl: pageData.url,
     timestamp,
-    { keepScripts: settings.keepScripts }
-  );
+    options: { keepScripts: settings.keepScripts },
+  });
 
   // Step 5: Save to IndexedDB
   await saveSnapshot({
