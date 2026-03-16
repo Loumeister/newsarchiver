@@ -5,7 +5,7 @@
  */
 
 (async () => {
-  // Dismiss paywall/cookie/overlay elements
+  // Dismiss paywall/cookie/overlay elements (only fixed/absolute/sticky positioned)
   const overlaySelectors = [
     '[class*="paywall"]', '[class*="wall"]', '[id*="paywall"]',
     '[class*="premium-gate"]', '[class*="cookie"]', '[id*="consent"]',
@@ -25,67 +25,45 @@
     });
   }
 
-  // Remove gate/metering elements that block article content
-  const gateSelectors = [
-    '[id*="gateway"]', '[class*="gateway"]',
-    '[id*="meter"]', '[class*="meter"]',
-    '[data-testid*="paywall"]', '[data-testid*="inline-message"]',
-    '[class*="subscribe-callout"]', '[class*="truncate-content"]',
-    '[id*="subscribe"]', '[class*="regwall"]',
-    '[aria-label*="subscribe"]',
-  ];
-  for (const sel of gateSelectors) {
-    document.querySelectorAll(sel).forEach(el => el.remove());
-  }
-
   // Restore scroll in case it was locked
   document.body.style.overflow = 'auto';
   document.documentElement.style.overflow = 'auto';
 
-  // Unlock CSS-hidden article content: remove overflow/height restrictions
-  // that paywalled sites use to truncate articles.
-  const articleContainers = document.querySelectorAll(
-    'article, [role="article"], [class*="article"], [class*="story-body"], ' +
-    '[class*="post-content"], [class*="entry-content"], [class*="content-body"], ' +
-    '[data-testid="article-body"], main, [id*="article"], [class*="Article"]'
-  );
-  for (const container of articleContainers) {
-    container.style.overflow = 'visible';
-    container.style.maxHeight = 'none';
-    container.style.height = 'auto';
-
-    // Also unlock all child elements within article that may be hidden
-    container.querySelectorAll('*').forEach(child => {
-      const cs = window.getComputedStyle(child);
-      if (cs.overflow === 'hidden' && cs.maxHeight !== 'none') {
-        child.style.overflow = 'visible';
-        child.style.maxHeight = 'none';
-      }
-      // Reveal hidden paragraphs/sections within the article
-      if (cs.display === 'none' && (
-        child.tagName === 'P' || child.tagName === 'SECTION' ||
-        child.tagName === 'DIV' || child.tagName === 'FIGURE'
-      )) {
-        child.style.display = '';
-        // If still hidden after removing inline style, force block
-        if (window.getComputedStyle(child).display === 'none') {
-          child.style.setProperty('display', 'block', 'important');
-        }
-      }
-    });
-  }
-
-  // Inject a style override to disable common paywall CSS class patterns
+  // Inject CSS overrides to reveal article content hidden by paywall CSS.
+  // This is non-destructive — it only adds style rules, never removes DOM nodes
+  // that could be structural.
   const styleOverride = document.createElement('style');
+  styleOverride.setAttribute('data-newsarchive', 'unlock');
   styleOverride.textContent = `
-    [class*="truncat"], [class*="collapsed"], [class*="preview-only"],
-    [class*="gated"], [class*="hidden-content"] {
-      max-height: none !important;
+    /* Unlock article body containers that use overflow/height to truncate */
+    article, [role="article"], [data-testid="article-body"],
+    [class*="story-body"], [class*="article-body"],
+    [class*="post-content"], [class*="entry-content"],
+    [class*="content-body"] {
       overflow: visible !important;
+      max-height: none !important;
+      height: auto !important;
+    }
+
+    /* Reveal paragraphs hidden inside article elements */
+    article p, [role="article"] p,
+    [data-testid="article-body"] p,
+    [class*="story-body"] p,
+    [class*="article-body"] p {
       display: block !important;
     }
-    body, html {
+
+    /* Override common paywall truncation class patterns */
+    [class*="truncat"], [class*="preview-only"],
+    [class*="gated-content"] {
+      max-height: none !important;
       overflow: visible !important;
+    }
+
+    /* Ensure html/body scroll is not locked */
+    html, body {
+      overflow: visible !important;
+      height: auto !important;
     }
   `;
   document.head.appendChild(styleOverride);
