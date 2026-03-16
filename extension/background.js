@@ -49,13 +49,37 @@ function generateSnapshotId() {
   return Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
 }
 
+const GOOGLEBOT_UA = 'Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)';
+const GOOGLE_REFERER = 'https://www.google.com/';
+
 /**
  * Get user settings from chrome.storage.sync.
  */
 async function getSettings() {
   return new Promise(resolve => {
-    chrome.storage.sync.get({ keepScripts: false }, resolve);
+    chrome.storage.sync.get({ keepScripts: false, googlebotMode: true }, resolve);
   });
+}
+
+/**
+ * Re-fetch a URL using a Googlebot user agent and Google referer.
+ * This causes most news sites to serve full, unpaywalled content.
+ */
+async function fetchWithGooglebot(url) {
+  const response = await fetch(url, {
+    headers: {
+      'User-Agent': GOOGLEBOT_UA,
+      'Referer': GOOGLE_REFERER,
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.5',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Fetch failed: ${response.status} ${response.statusText}`);
+  }
+
+  return await response.text();
 }
 
 // Track pending captures: tabId → { resolve, reject }
@@ -97,23 +121,43 @@ async function handleArchive(tabId) {
     format: 'png',
   });
 
-  // Step 2: Inject content script to capture page HTML
-  const pageData = await injectAndCapture(tabId);
+  // Step 2: Get page HTML — either via Googlebot fetch or content script
+  let pageHtml, pageUrl, pageTitle;
+
+  if (settings.googlebotMode) {
+    try {
+      const tab = await chrome.tabs.get(tabId);
+      pageUrl = tab.url;
+      pageTitle = tab.title || '';
+      pageHtml = await fetchWithGooglebot(pageUrl);
+    } catch (err) {
+      console.warn('[archive] Googlebot fetch failed, falling back to content script:', err.message);
+      const pageData = await injectAndCapture(tabId);
+      pageHtml = pageData.html;
+      pageUrl = pageData.url;
+      pageTitle = pageData.title;
+    }
+  } else {
+    const pageData = await injectAndCapture(tabId);
+    pageHtml = pageData.html;
+    pageUrl = pageData.url;
+    pageTitle = pageData.title;
+  }
 
   // Step 3: Collect and fetch assets (collectAssetUrls runs in offscreen doc for DOM access)
   const { urls: assetUrls } = await sendToOffscreen('collectAssetUrls', {
-    html: pageData.html,
-    baseUrl: pageData.url,
+    html: pageHtml,
+    baseUrl: pageUrl,
   });
   const assetMap = await fetchAllAssets(assetUrls, snapshotId);
 
   // Step 4: Rewrite HTML (runs in offscreen doc for DOM access)
   const timestamp = new Date().toISOString();
   const { html: rewrittenHtml } = await sendToOffscreen('rewriteHtml', {
-    html: pageData.html,
+    html: pageHtml,
     assetMapEntries: Array.from(assetMap.entries()),
     snapshotId,
-    originalUrl: pageData.url,
+    originalUrl: pageUrl,
     timestamp,
     options: { keepScripts: settings.keepScripts },
   });
@@ -121,14 +165,14 @@ async function handleArchive(tabId) {
   // Step 5: Save to IndexedDB
   await saveSnapshot({
     id: snapshotId,
-    originalUrl: pageData.url,
+    originalUrl: pageUrl,
     timestamp,
-    title: pageData.title || '',
+    title: pageTitle || '',
     html: rewrittenHtml,
     screenshot: screenshotDataUrl,
   });
 
-  return { id: snapshotId, title: pageData.title };
+  return { id: snapshotId, title: pageTitle };
 }
 
 /**
