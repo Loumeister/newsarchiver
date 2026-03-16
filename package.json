@@ -1,0 +1,27 @@
+{
+  "name": "newsarchiver",
+  "version": "1.0.0",
+  "description": "A locally hosted web service that accepts a news article URL and returns a self-contained, paywall-bypassing HTML snapshot of that article — functionally equivalent to what archive.is produces, but running on your own machine.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "setup": "npx playwright install chromium",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://local_proxy@127.0.0.1:43295/git/Loumeister/newsarchiver"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cheerio": "^1.2.0",
+    "crypto-js": "^4.2.0",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "mime-types": "^3.0.2",
+    "node-fetch": "^2.7.0",
+    "playwright": "^1.58.2"
+  }
+}
