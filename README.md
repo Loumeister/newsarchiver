@@ -78,6 +78,10 @@ data/
     ...
 ```
 
+## Chrome Extension
+
+A Chrome extension version is also available that runs entirely in your browser — no server needed. See [extension/README.md](extension/README.md) for installation and usage instructions.
+
 ## Legal disclaimer
 
 **This tool is intended for personal archival and research purposes only.** Bypassing paywalls may violate the terms of service of the archived website and/or applicable laws in your jurisdiction. The user assumes all responsibility for how this tool is used. The authors of this software do not encourage or condone any unlawful use.

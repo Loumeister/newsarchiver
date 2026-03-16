@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <h1>newsarchive</h1>
+    <p class="subtitle">Archive news articles as self-contained snapshots.</p>
+
+    <button id="archive-btn" class="btn">Archive this page</button>
+    <div id="status" class="status"></div>
+
+    <hr class="divider">
+
+    <h2>Saved Snapshots</h2>
+    <ul id="snapshot-list" class="snapshot-list">
+      <li class="empty">Loading...</li>
+    </ul>
+
+    <div class="footer">
+      <a href="#" id="options-link">Settings</a>
+    </div>
+  </div>
+  <script src="popup.js" type="module"></script>
+</body>
+</html>
