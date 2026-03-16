@@ -1,0 +1,5 @@
+node_modules/
+data/snapshots/
+data/assets/
+.env
+cookies.json
