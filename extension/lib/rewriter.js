@@ -85,6 +85,23 @@ function removeNoiseElements(doc, keepScripts = false) {
     if (!keepScripts) el.remove();
   });
 
+  // Strip lock/gate classes from article containers
+  const lockClassPatterns = [
+    /\blocked\b/, /\bis-locked\b/, /\bsubscriber-only\b/,
+    /\bpremium-content\b/, /\bmembers-only\b/, /\bpaid-content\b/,
+    /\brestricted\b/, /\bgated\b/, /\bpaywall-active\b/,
+    /\barticle--locked\b/, /\bcontent--locked\b/
+  ];
+  doc.querySelectorAll('article *, [role="article"] *, [class*="article-body"] *, [class*="story-body"] *, main *').forEach(el => {
+    const classAttr = el.getAttribute('class');
+    if (!classAttr) return;
+    const classes = classAttr.split(/\s+/);
+    const filtered = classes.filter(cls => !lockClassPatterns.some(p => p.test(cls)));
+    if (filtered.length !== classes.length) {
+      el.setAttribute('class', filtered.join(' '));
+    }
+  });
+
   // Remove known overlay containers
   const overlaySelectors = [
     '[class*="paywall"]', '[class*="premium-gate"]',
@@ -132,6 +149,15 @@ function injectReadabilityCss(doc) {
     [class*="curtain"], [class*="premium-overlay"] {
       background: transparent !important;
       display: none !important;
+    }
+    article *, [role="article"] *, [class*="article-body"] *,
+    [class*="story-body"] *, [class*="post-content"] *,
+    [class*="entry-content"] *, [class*="content-body"] * {
+      filter: none !important;
+      -webkit-filter: none !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      clip-path: none !important;
     }
   `;
   const head = doc.querySelector('head');
@@ -204,6 +230,26 @@ function rewriteAssetUrls(doc, assetMap) {
   doc.querySelectorAll('link[href]:not([rel="stylesheet"])').forEach(el => {
     const asset = findInAssetMap(el.getAttribute('href'), assetMap);
     if (asset) el.setAttribute('href', asset.dataUri);
+  });
+
+  // Promote lazy-load data attributes to src and rewrite them
+  const lazyAttrs = ['data-src', 'data-lazy-src', 'data-original', 'data-lazy'];
+  for (const attr of lazyAttrs) {
+    doc.querySelectorAll(`img[${attr}]`).forEach(el => {
+      const lazySrc = el.getAttribute(attr);
+      const asset = findInAssetMap(lazySrc, assetMap);
+      if (asset) {
+        el.setAttribute('src', asset.dataUri);
+        el.removeAttribute(attr);
+      }
+    });
+  }
+  doc.querySelectorAll('source[data-srcset]').forEach(el => {
+    const lazySrcset = el.getAttribute('data-srcset');
+    if (lazySrcset) {
+      el.setAttribute('srcset', rewriteSrcset(lazySrcset, assetMap));
+      el.removeAttribute('data-srcset');
+    }
   });
 
   // Inline style url(...) rewriting

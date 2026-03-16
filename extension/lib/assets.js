@@ -37,6 +37,13 @@ export function collectAssetUrls(html, baseUrl) {
     parseSrcset(el.getAttribute('srcset')).forEach(addUrl);
   });
 
+  // Lazy-load data attributes on img and source elements
+  const lazyAttrs = ['data-src', 'data-lazy-src', 'data-original', 'data-lazy', 'data-hi-res-src'];
+  for (const attr of lazyAttrs) {
+    doc.querySelectorAll(`img[${attr}]`).forEach(el => addUrl(el.getAttribute(attr)));
+    doc.querySelectorAll(`source[${attr}]`).forEach(el => addUrl(el.getAttribute(attr)));
+  }
+
   // <source src="..."> and <source srcset="...">
   doc.querySelectorAll('source[src]').forEach(el => addUrl(el.getAttribute('src')));
   doc.querySelectorAll('source[srcset]').forEach(el => {

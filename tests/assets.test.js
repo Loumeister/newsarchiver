@@ -156,6 +156,42 @@ describe('collectAssetUrls', () => {
     const urls = collectAssetUrls(html, base);
     expect(urls).toEqual([]);
   });
+
+  test('collects data-src from lazy-loaded images', () => {
+    const html = '<html><body><img data-src="lazy.jpg" src="placeholder.gif"></body></html>';
+    const urls = collectAssetUrls(html, base);
+    expect(urls).toContain('https://example.com/lazy.jpg');
+  });
+
+  test('collects data-lazy-src from lazy-loaded images', () => {
+    const html = '<html><body><img data-lazy-src="lazy2.jpg"></body></html>';
+    const urls = collectAssetUrls(html, base);
+    expect(urls).toContain('https://example.com/lazy2.jpg');
+  });
+
+  test('collects data-original from lazy-loaded images', () => {
+    const html = '<html><body><img data-original="original.jpg"></body></html>';
+    const urls = collectAssetUrls(html, base);
+    expect(urls).toContain('https://example.com/original.jpg');
+  });
+
+  test('collects data-lazy from lazy-loaded images', () => {
+    const html = '<html><body><img data-lazy="/images/lazy3.jpg"></body></html>';
+    const urls = collectAssetUrls(html, base);
+    expect(urls).toContain('https://example.com/images/lazy3.jpg');
+  });
+
+  test('collects data-hi-res-src from images', () => {
+    const html = '<html><body><img data-hi-res-src="hires.jpg"></body></html>';
+    const urls = collectAssetUrls(html, base);
+    expect(urls).toContain('https://example.com/hires.jpg');
+  });
+
+  test('collects lazy-load attrs from source elements', () => {
+    const html = '<html><body><picture><source data-src="webp.webp"></picture></body></html>';
+    const urls = collectAssetUrls(html, base);
+    expect(urls).toContain('https://example.com/webp.webp');
+  });
 });
 
 // ─── fetchAllAssets ──────────────────────────────────────────────────────

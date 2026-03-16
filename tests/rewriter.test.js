@@ -260,6 +260,95 @@ describe('inlineExternalCss', () => {
   });
 });
 
+// ─── Lazy-load attribute rewriting ───────────────────────────────────────
+
+describe('lazy-load attribute rewriting', () => {
+  test('promotes data-src to src when asset is in map', () => {
+    const html = '<html><body><img data-src="https://example.com/lazy.jpg" src="placeholder.gif"></body></html>';
+    const assetMap = new Map([['https://example.com/lazy.jpg', '/assets/abc123/lazy.jpg']]);
+    const result = rewrite(html, assetMap);
+    expect(result).toContain('src="/assets/abc123/lazy.jpg"');
+    expect(result).not.toContain('data-src');
+  });
+
+  test('promotes data-lazy-src to src', () => {
+    const html = '<html><body><img data-lazy-src="https://example.com/lazy2.jpg"></body></html>';
+    const assetMap = new Map([['https://example.com/lazy2.jpg', '/assets/abc123/lazy2.jpg']]);
+    const result = rewrite(html, assetMap);
+    expect(result).toContain('src="/assets/abc123/lazy2.jpg"');
+  });
+
+  test('promotes data-original to src', () => {
+    const html = '<html><body><img data-original="https://example.com/orig.jpg"></body></html>';
+    const assetMap = new Map([['https://example.com/orig.jpg', '/assets/abc123/orig.jpg']]);
+    const result = rewrite(html, assetMap);
+    expect(result).toContain('src="/assets/abc123/orig.jpg"');
+  });
+
+  test('rewrites source data-srcset', () => {
+    const html = '<html><body><picture><source data-srcset="https://example.com/a.webp 1x, https://example.com/b.webp 2x"></picture></body></html>';
+    const assetMap = new Map([
+      ['https://example.com/a.webp', '/assets/abc123/a.webp'],
+      ['https://example.com/b.webp', '/assets/abc123/b.webp'],
+    ]);
+    const result = rewrite(html, assetMap);
+    expect(result).toContain('/assets/abc123/a.webp 1x');
+    expect(result).toContain('/assets/abc123/b.webp 2x');
+    expect(result).not.toContain('data-srcset');
+  });
+});
+
+// ─── Class stripping ────────────────────────────────────────────────────
+
+describe('class-based gating removal', () => {
+  test('strips lock classes from article children', () => {
+    const html = '<html><body><article><div class="content is-locked some-class"><p>Text</p></div></article></body></html>';
+    const result = rewrite(html);
+    expect(result).not.toContain('is-locked');
+    expect(result).toContain('some-class');
+    expect(result).toContain('Text');
+  });
+
+  test('strips subscriber-only class', () => {
+    const html = '<html><body><article><p class="subscriber-only hidden">Secret</p></article></body></html>';
+    const result = rewrite(html);
+    expect(result).not.toContain('subscriber-only');
+    expect(result).toContain('Secret');
+  });
+
+  test('strips premium-content class', () => {
+    const html = '<html><body><article><div class="premium-content"><p>Premium</p></div></article></body></html>';
+    const result = rewrite(html);
+    expect(result).not.toContain('premium-content');
+    expect(result).toContain('Premium');
+  });
+
+  test('does not strip lock classes outside article context', () => {
+    const html = '<html><body><div class="is-locked"><p>Nav</p></div></body></html>';
+    const result = rewrite(html);
+    expect(result).toContain('is-locked');
+  });
+});
+
+// ─── Readability CSS injection ──────────────────────────────────────────
+
+describe('readability CSS overrides', () => {
+  test('injects blur/filter removal CSS', () => {
+    const html = '<html><head></head><body></body></html>';
+    const result = rewrite(html);
+    expect(result).toContain('filter: none !important');
+    expect(result).toContain('-webkit-filter: none !important');
+  });
+
+  test('injects visibility/opacity/clip-path overrides', () => {
+    const html = '<html><head></head><body></body></html>';
+    const result = rewrite(html);
+    expect(result).toContain('visibility: visible !important');
+    expect(result).toContain('opacity: 1 !important');
+    expect(result).toContain('clip-path: none !important');
+  });
+});
+
 // ─── Full pipeline ──────────────────────────────────────────────────────
 
 describe('rewriteHtml full pipeline', () => {
