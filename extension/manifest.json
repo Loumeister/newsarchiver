@@ -8,7 +8,8 @@
     "scripting",
     "storage",
     "downloads",
-    "tabs"
+    "tabs",
+    "offscreen"
   ],
   "host_permissions": [
     "<all_urls>"
