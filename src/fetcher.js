@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const config = require('./config');
+const { OVERLAY_SELECTORS_BROWSER, UNLOCK_CSS } = require('./shared/constants');
 
 /**
  * Generate a short random snapshot ID (6 hex chars).
@@ -27,14 +28,8 @@ function loadCookies() {
  * Also inject CSS overrides to reveal truncated article content.
  */
 async function dismissOverlays(page) {
-  await page.evaluate(() => {
+  await page.evaluate(({ selectors, unlockCss }) => {
     // Remove paywall/overlay elements (only fixed/absolute/sticky positioned)
-    const selectors = [
-      '[class*="paywall"]', '[class*="wall"]', '[id*="paywall"]',
-      '[class*="premium-gate"]', '[class*="cookie"]', '[id*="consent"]',
-      '[class*="overlay"]', '[class*="modal"]', '[class*="subscribe-gate"]',
-      '[class*="registration-wall"]',
-    ];
     for (const sel of selectors) {
       document.querySelectorAll(sel).forEach(el => {
         const style = window.getComputedStyle(el);
@@ -55,58 +50,9 @@ async function dismissOverlays(page) {
     // Non-destructive: only adds style rules, never removes structural DOM nodes.
     const styleOverride = document.createElement('style');
     styleOverride.setAttribute('data-newsarchive', 'unlock');
-    styleOverride.textContent = `
-      article, [role="article"], [data-testid="article-body"],
-      [class*="story-body"], [class*="article-body"],
-      [class*="post-content"], [class*="entry-content"],
-      [class*="content-body"] {
-        overflow: visible !important;
-        max-height: none !important;
-        height: auto !important;
-      }
-      article p, [role="article"] p,
-      [data-testid="article-body"] p,
-      [class*="story-body"] p,
-      [class*="article-body"] p {
-        display: block !important;
-      }
-      [class*="truncat"], [class*="preview-only"],
-      [class*="gated-content"] {
-        max-height: none !important;
-        overflow: visible !important;
-      }
-      /* Force readable colors — defeats dark-background text obfuscation */
-      article, [role="article"], [data-testid="article-body"],
-      [class*="story-body"], [class*="article-body"],
-      [class*="post-content"], [class*="entry-content"],
-      [class*="content-body"] {
-        color: #1a1a1a !important;
-        background: #fff !important;
-      }
-      article p, article li, article h1, article h2, article h3,
-      article h4, article h5, article h6, article span, article a,
-      article blockquote, article figcaption,
-      [role="article"] p, [role="article"] li, [role="article"] span,
-      [class*="article-body"] p, [class*="article-body"] span,
-      [class*="story-body"] p, [class*="story-body"] span,
-      [class*="post-content"] p, [class*="post-content"] span,
-      [class*="entry-content"] p, [class*="entry-content"] span,
-      [class*="content-body"] p, [class*="content-body"] span {
-        color: #1a1a1a !important;
-      }
-      /* Remove gradient/backdrop overlays used as paywall fade-out */
-      [class*="gradient"], [class*="fade"], [class*="backdrop"],
-      [class*="curtain"], [class*="premium-overlay"] {
-        background: transparent !important;
-        display: none !important;
-      }
-      html, body {
-        overflow: visible !important;
-        height: auto !important;
-      }
-    `;
+    styleOverride.textContent = unlockCss;
     document.head.appendChild(styleOverride);
-  });
+  }, { selectors: OVERLAY_SELECTORS_BROWSER, unlockCss: UNLOCK_CSS });
 }
 
 /**

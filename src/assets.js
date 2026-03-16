@@ -6,6 +6,7 @@ const path = require('path');
 const mime = require('mime-types');
 const { URL } = require('url');
 const config = require('./config');
+const { parseSrcset } = require('./shared/utils');
 
 /**
  * Collect all asset URLs from the rendered HTML.
@@ -60,14 +61,6 @@ function collectAssetUrls(html, baseUrl) {
   });
 
   return Array.from(urls);
-}
-
-/**
- * Parse a srcset attribute into an array of URLs.
- */
-function parseSrcset(srcset) {
-  if (!srcset) return [];
-  return srcset.split(',').map(entry => entry.trim().split(/\s+/)[0]).filter(Boolean);
 }
 
 /**
