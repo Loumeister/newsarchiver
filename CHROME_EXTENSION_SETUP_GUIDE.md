@@ -101,14 +101,38 @@ Chrome requires "Developer mode" to be turned on before you can install extensio
 
 ## Step 5: Load the Extension
 
+This is the step where most people run into trouble, so read carefully.
+
 1. Click the **"Load unpacked"** button (top-left of the Extensions page)
 2. A file browser window will open
 3. Navigate to the `newsarchiver-main` folder you extracted in Step 2
-4. **Open the `extension` folder inside it** — this is important! Don't select the outer folder. You need to go inside it and select the folder called `extension`
-5. Click **"Select Folder"** (Windows/Linux) or **"Open"** (Mac)
-6. The extension should now appear on the Extensions page with the name **"newsarchive"** and its icon
+4. You will see several items inside it. **You must open the folder called `extension` and select that folder.** Do NOT select the outer `newsarchiver-main` folder itself.
 
-If you see an error, double-check that you selected the `extension` folder (not the parent `newsarchiver-main` folder).
+   Here is what the folder structure looks like — you need to select the one marked with the arrow:
+
+   ```
+   newsarchiver-main/
+   ├── src/
+   ├── tests/
+   ├── data/
+   ├── extension/       <-- SELECT THIS FOLDER
+   │   ├── manifest.json
+   │   ├── background.js
+   │   ├── content.js
+   │   ├── popup/
+   │   ├── options/
+   │   ├── viewer/
+   │   ├── lib/
+   │   └── icons/
+   ├── README.md
+   └── package.json
+   ```
+
+   **How to do this:** Double-click `newsarchiver-main` to go inside it. Then double-click `extension` to go inside that folder. You should now see files like `manifest.json` and `background.js`. Now click **"Select Folder"** (Windows/Linux) or **"Open"** (Mac).
+
+5. The extension should now appear on the Extensions page with the name **"newsarchive"** and its icon
+
+> **If you see the error "Manifest file is missing or unreadable"** (or in Dutch: "Manifestbestand ontbreekt of is onleesbaar"), it means you selected the wrong folder. Go back and make sure you are inside the `extension` folder — the one that directly contains the file `manifest.json`. An easy way to verify: when the file browser is open, you should be able to see `manifest.json` listed among the files before you click "Select Folder".
 
 ---
 
@@ -170,8 +194,8 @@ By default, the extension might be hidden behind Chrome's puzzle-piece icon. To 
 ### "Load unpacked" button is missing
 Make sure **Developer mode** is turned on (Step 4). The toggle should be blue.
 
-### Error when loading the extension
-Make sure you selected the `extension` folder inside the downloaded files — not the outer `newsarchiver-main` folder. The `extension` folder is the one that contains a file called `manifest.json`.
+### Error: "Manifest file is missing or unreadable"
+This is the most common error. It means you selected the wrong folder. You need to select the `extension` folder that is *inside* the `newsarchiver-main` folder — not the `newsarchiver-main` folder itself. Go back to Step 5 and follow the instructions carefully. When you have the right folder open in the file browser, you should be able to see a file called `manifest.json` listed before you click "Select Folder".
 
 ### The extension icon doesn't appear in the toolbar
 Click the **puzzle piece icon** (🧩) in the top-right area of Chrome and pin the extension (Step 6).
