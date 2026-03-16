@@ -1,10 +1,27 @@
 require('dotenv').config();
 
+const VALID_WAIT_STRATEGIES = ['networkidle', 'domcontentloaded'];
+
+const port = parseInt(process.env.PORT, 10) || 3000;
+if (isNaN(port) || port < 1 || port > 65535) {
+  throw new Error(`Invalid PORT: ${process.env.PORT} (must be 1-65535)`);
+}
+
+const timeoutMs = parseInt(process.env.TIMEOUT_MS, 10) || 15000;
+if (isNaN(timeoutMs) || timeoutMs <= 0) {
+  throw new Error(`Invalid TIMEOUT_MS: ${process.env.TIMEOUT_MS} (must be a positive number)`);
+}
+
+const waitStrategy = process.env.WAIT_STRATEGY || 'networkidle';
+if (!VALID_WAIT_STRATEGIES.includes(waitStrategy)) {
+  throw new Error(`Invalid WAIT_STRATEGY: ${waitStrategy} (must be one of: ${VALID_WAIT_STRATEGIES.join(', ')})`);
+}
+
 module.exports = {
-  port: parseInt(process.env.PORT, 10) || 3000,
+  port,
   headless: process.env.HEADLESS !== 'false',
-  waitStrategy: process.env.WAIT_STRATEGY || 'networkidle',
-  timeoutMs: parseInt(process.env.TIMEOUT_MS, 10) || 15000,
+  waitStrategy,
+  timeoutMs,
   keepScripts: process.env.KEEP_SCRIPTS === 'true',
   proxyLinks: process.env.PROXY_LINKS === 'true',
   cookiesFile: process.env.COOKIES_FILE || null,
