@@ -199,6 +199,7 @@ app.listen(config.port, () => {
   console.log(`  Wait strategy: ${config.waitStrategy}`);
   console.log(`  Keep scripts: ${config.keepScripts}`);
   console.log(`  Proxy links: ${config.proxyLinks}`);
+  console.log(`  User agent: ${config.userAgent.slice(0, 60)}...`);
 });
 
 // ─── Home page HTML ─────────────────────────────────────────────────────
