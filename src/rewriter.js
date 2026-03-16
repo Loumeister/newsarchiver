@@ -22,6 +22,9 @@ function rewriteHtml(html, assetMap, snapshotId, originalUrl, timestamp, port) {
   // 3a. Remove noise elements
   removeNoiseElements($);
 
+  // 3a-2. Inject readability CSS to defeat color-based paywall obfuscation
+  injectReadabilityCss($);
+
   // 3b. Inline external CSS
   inlineExternalCss($, assetMap);
 
@@ -122,6 +125,38 @@ function removeNoiseElements($) {
       }
     });
   }
+}
+
+/**
+ * Inject CSS that forces readable colors on article content.
+ * Defeats paywall techniques that hide text via dark-on-dark colors.
+ */
+function injectReadabilityCss($) {
+  $('head').append(`<style data-newsarchive="readability">
+    article, [role="article"], [data-testid="article-body"],
+    [class*="story-body"], [class*="article-body"],
+    [class*="post-content"], [class*="entry-content"],
+    [class*="content-body"] {
+      color: #1a1a1a !important;
+      background: #fff !important;
+    }
+    article p, article li, article h1, article h2, article h3,
+    article h4, article h5, article h6, article span, article a,
+    article blockquote, article figcaption,
+    [role="article"] p, [role="article"] li, [role="article"] span,
+    [class*="article-body"] p, [class*="article-body"] span,
+    [class*="story-body"] p, [class*="story-body"] span,
+    [class*="post-content"] p, [class*="post-content"] span,
+    [class*="entry-content"] p, [class*="entry-content"] span,
+    [class*="content-body"] p, [class*="content-body"] span {
+      color: #1a1a1a !important;
+    }
+    [class*="gradient"], [class*="fade"], [class*="backdrop"],
+    [class*="curtain"], [class*="premium-overlay"] {
+      background: transparent !important;
+      display: none !important;
+    }
+  </style>`);
 }
 
 /**

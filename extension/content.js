@@ -60,6 +60,32 @@
       overflow: visible !important;
     }
 
+    /* Force readable colors — defeats dark-background text obfuscation */
+    article, [role="article"], [data-testid="article-body"],
+    [class*="story-body"], [class*="article-body"],
+    [class*="post-content"], [class*="entry-content"],
+    [class*="content-body"] {
+      color: #1a1a1a !important;
+      background: #fff !important;
+    }
+    article p, article li, article h1, article h2, article h3,
+    article h4, article h5, article h6, article span, article a,
+    article blockquote, article figcaption,
+    [role="article"] p, [role="article"] li, [role="article"] span,
+    [class*="article-body"] p, [class*="article-body"] span,
+    [class*="story-body"] p, [class*="story-body"] span,
+    [class*="post-content"] p, [class*="post-content"] span,
+    [class*="entry-content"] p, [class*="entry-content"] span,
+    [class*="content-body"] p, [class*="content-body"] span {
+      color: #1a1a1a !important;
+    }
+    /* Remove gradient/backdrop overlays used as paywall fade-out */
+    [class*="gradient"], [class*="fade"], [class*="backdrop"],
+    [class*="curtain"], [class*="premium-overlay"] {
+      background: transparent !important;
+      display: none !important;
+    }
+
     /* Ensure html/body scroll is not locked */
     html, body {
       overflow: visible !important;
