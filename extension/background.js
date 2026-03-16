@@ -125,13 +125,26 @@ async function handleArchive(tabId) {
   let pageHtml, pageUrl, pageTitle;
 
   if (settings.googlebotMode) {
+    let useContentScript = false;
     try {
       const tab = await chrome.tabs.get(tabId);
       pageUrl = tab.url;
       pageTitle = tab.title || '';
       pageHtml = await fetchWithGooglebot(pageUrl);
+
+      // Validate: if the fetched HTML has too few <p> tags, it's likely
+      // a JS-rendered shell (e.g. AD.nl) — fall back to content script
+      const pCount = (pageHtml.match(/<p[\s>]/gi) || []).length;
+      if (pCount < 3) {
+        console.warn(`[archive] Googlebot HTML has only ${pCount} <p> tags, falling back to content script`);
+        useContentScript = true;
+      }
     } catch (err) {
       console.warn('[archive] Googlebot fetch failed, falling back to content script:', err.message);
+      useContentScript = true;
+    }
+
+    if (useContentScript) {
       const pageData = await injectAndCapture(tabId);
       pageHtml = pageData.html;
       pageUrl = pageData.url;
