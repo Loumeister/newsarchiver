@@ -1,5 +1,5 @@
 const config = require('../config');
-const { TRACKING_PATTERNS, OVERLAY_SELECTORS_REWRITER } = require('../shared/constants');
+const { TRACKING_PATTERNS, OVERLAY_SELECTORS_REWRITER, LOCK_CLASS_PATTERNS } = require('../shared/constants');
 
 /**
  * Remove script tags, iframes, noscript, tracking pixels, preload/prefetch links,
@@ -59,6 +59,18 @@ function removeNoiseElements($) {
     // If keepScripts is false (default), remove all remaining inline scripts
     if (!config.keepScripts) {
       $el.remove();
+    }
+  });
+
+  // Strip lock/gate classes from article containers
+  $('article *, [role="article"] *, [class*="article-body"] *, [class*="story-body"] *, main *').each((_, el) => {
+    const $el = $(el);
+    const classAttr = $el.attr('class');
+    if (!classAttr) return;
+    const classes = classAttr.split(/\s+/);
+    const filtered = classes.filter(cls => !LOCK_CLASS_PATTERNS.some(p => p.test(cls)));
+    if (filtered.length !== classes.length) {
+      $el.attr('class', filtered.join(' '));
     }
   });
 

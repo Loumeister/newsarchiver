@@ -43,7 +43,24 @@ const READABILITY_CSS = `
     [class*="curtain"], [class*="premium-overlay"] {
       background: transparent !important;
       display: none !important;
+    }
+    article *, [role="article"] *, [class*="article-body"] *,
+    [class*="story-body"] *, [class*="post-content"] *,
+    [class*="entry-content"] *, [class*="content-body"] * {
+      filter: none !important;
+      -webkit-filter: none !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      clip-path: none !important;
     }`;
+
+// Lock/gate class patterns to strip from article elements
+const LOCK_CLASS_PATTERNS = [
+  /\blocked\b/, /\bis-locked\b/, /\bsubscriber-only\b/,
+  /\bpremium-content\b/, /\bmembers-only\b/, /\bpaid-content\b/,
+  /\brestricted\b/, /\bgated\b/, /\bpaywall-active\b/,
+  /\barticle--locked\b/, /\bcontent--locked\b/
+];
 
 // CSS overrides injected by fetcher to unlock paywalled content in-browser
 const UNLOCK_CSS = `
@@ -85,6 +102,21 @@ const UNLOCK_CSS = `
         background: transparent !important;
         display: none !important;
       }
+      /* Remove blur/filter overlays */
+      article *, [role="article"] *, [class*="article-body"] *,
+      [class*="story-body"] *, [class*="post-content"] *,
+      [class*="entry-content"] *, [class*="content-body"] * {
+        filter: none !important;
+        -webkit-filter: none !important;
+      }
+      /* Override visibility/opacity/clip-path hiding */
+      article *, [role="article"] *, [class*="article-body"] *,
+      [class*="story-body"] *, [class*="post-content"] *,
+      [class*="entry-content"] *, [class*="content-body"] * {
+        visibility: visible !important;
+        opacity: 1 !important;
+        clip-path: none !important;
+      }
       html, body {
         overflow: visible !important;
         height: auto !important;
@@ -97,4 +129,5 @@ module.exports = {
   ARTICLE_SELECTORS,
   READABILITY_CSS,
   UNLOCK_CSS,
+  LOCK_CLASS_PATTERNS,
 };

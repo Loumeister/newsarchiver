@@ -5,6 +5,7 @@ jest.mock('playwright', () => {
     evaluate: jest.fn().mockResolvedValue('<html lang="en"><head><title>Test</title></head><body>Hello</body></html>'),
     title: jest.fn().mockResolvedValue('Test Page'),
     screenshot: jest.fn().mockResolvedValue(Buffer.from('fake-screenshot')),
+    addInitScript: jest.fn().mockResolvedValue(undefined),
   };
   const mockContext = {
     newPage: jest.fn().mockResolvedValue(mockPage),
@@ -27,6 +28,7 @@ jest.mock('../src/config', () => ({
   waitStrategy: 'networkidle',
   timeoutMs: 15000,
   cookiesFile: null,
+  clearMeterState: true,
   dataDir: '/tmp/newsarchiver-test/data',
 }));
 
@@ -109,5 +111,17 @@ describe('fetchPage', () => {
     _mocks.mockPage.goto.mockRejectedValueOnce(new Error('Navigation failed'));
     await expect(fetchPage('https://example.com')).rejects.toThrow('Navigation failed');
     expect(_mocks.mockBrowser.close).toHaveBeenCalled();
+  });
+
+  test('calls page.evaluate multiple times for scroll, lazy-load, and overlays', async () => {
+    await fetchPage('https://example.com');
+    // scrollToBottom, promoteLazyImages, dismissOverlays, and final HTML capture
+    expect(_mocks.mockPage.evaluate).toHaveBeenCalledTimes(4);
+  });
+
+  test('calls addInitScript to clear metered paywall state', async () => {
+    await fetchPage('https://example.com');
+    expect(_mocks.mockPage.addInitScript).toHaveBeenCalledTimes(1);
+    expect(_mocks.mockPage.addInitScript).toHaveBeenCalledWith(expect.any(Function));
   });
 });

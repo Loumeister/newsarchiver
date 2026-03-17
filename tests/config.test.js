@@ -12,6 +12,7 @@ describe('config', () => {
     delete process.env.KEEP_SCRIPTS;
     delete process.env.PROXY_LINKS;
     delete process.env.COOKIES_FILE;
+    delete process.env.CLEAR_METER_STATE;
   });
 
   afterAll(() => {
@@ -81,6 +82,17 @@ describe('config', () => {
     process.env.COOKIES_FILE = '/path/to/cookies.json';
     const config = require('../src/config');
     expect(config.cookiesFile).toBe('/path/to/cookies.json');
+  });
+
+  test('clearMeterState defaults to true', () => {
+    const config = require('../src/config');
+    expect(config.clearMeterState).toBe(true);
+  });
+
+  test('CLEAR_METER_STATE=false disables meter clearing', () => {
+    process.env.CLEAR_METER_STATE = 'false';
+    const config = require('../src/config');
+    expect(config.clearMeterState).toBe(false);
   });
 
   test('dataDir points to project data directory', () => {

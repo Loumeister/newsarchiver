@@ -77,6 +77,28 @@ function rewriteAssetUrls($, assetMap) {
     if (local) $el.attr('href', local);
   });
 
+  // Promote lazy-load data attributes to src and rewrite them
+  const lazyAttrs = ['data-src', 'data-lazy-src', 'data-original', 'data-lazy'];
+  for (const attr of lazyAttrs) {
+    $(`img[${attr}]`).each((_, el) => {
+      const $el = $(el);
+      const lazySrc = $el.attr(attr);
+      const local = findInAssetMap(lazySrc, assetMap);
+      if (local) {
+        $el.attr('src', local);
+        $el.removeAttr(attr);
+      }
+    });
+  }
+  $('source[data-srcset]').each((_, el) => {
+    const $el = $(el);
+    const lazySrcset = $el.attr('data-srcset');
+    if (lazySrcset) {
+      $el.attr('srcset', rewriteSrcset(lazySrcset, assetMap));
+      $el.removeAttr('data-srcset');
+    }
+  });
+
   // Inline style url(...) rewriting
   $('[style]').each((_, el) => {
     const $el = $(el);

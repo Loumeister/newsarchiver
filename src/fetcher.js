@@ -3,7 +3,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const config = require('./config');
-const { OVERLAY_SELECTORS_BROWSER, UNLOCK_CSS } = require('./shared/constants');
+const { OVERLAY_SELECTORS_BROWSER, UNLOCK_CSS, LOCK_CLASS_PATTERNS } = require('./shared/constants');
 
 /**
  * Generate a short random snapshot ID (6 hex chars).
@@ -24,11 +24,49 @@ function loadCookies() {
 }
 
 /**
+ * Scroll the page from top to bottom to trigger Intersection Observer
+ * callbacks and lazy-load images/content below the fold.
+ */
+async function scrollToBottom(page) {
+  await page.evaluate(async () => {
+    const delay = ms => new Promise(r => setTimeout(r, ms));
+    const height = document.body.scrollHeight;
+    const step = window.innerHeight;
+    for (let y = 0; y < height; y += step) {
+      window.scrollTo(0, y);
+      await delay(100);
+    }
+    window.scrollTo(0, 0);
+  });
+  await page.waitForTimeout(1500);
+}
+
+/**
+ * Promote lazy-load data attributes (data-src, data-lazy-src, etc.) to src
+ * so images render without JavaScript in the archived snapshot.
+ */
+async function promoteLazyImages(page) {
+  await page.evaluate(() => {
+    document.querySelectorAll('img[data-src], img[data-lazy-src], img[data-original], img[data-lazy]').forEach(el => {
+      const lazySrc = el.getAttribute('data-src') || el.getAttribute('data-lazy-src') ||
+                      el.getAttribute('data-original') || el.getAttribute('data-lazy');
+      if (lazySrc && (!el.src || el.src.includes('placeholder') || el.src.includes('data:') || el.src.includes('blank'))) {
+        el.src = lazySrc;
+      }
+    });
+    document.querySelectorAll('source[data-srcset]').forEach(el => {
+      const lazySrcset = el.getAttribute('data-srcset');
+      if (lazySrcset) el.srcset = lazySrcset;
+    });
+  });
+}
+
+/**
  * Dismiss overlays: paywall gates, cookie consent banners, modals.
  * Also inject CSS overrides to reveal truncated article content.
  */
 async function dismissOverlays(page) {
-  await page.evaluate(({ selectors, unlockCss }) => {
+  await page.evaluate(({ selectors, unlockCss, lockPatterns }) => {
     // Remove paywall/overlay elements (only fixed/absolute/sticky positioned)
     for (const sel of selectors) {
       document.querySelectorAll(sel).forEach(el => {
@@ -52,7 +90,30 @@ async function dismissOverlays(page) {
     styleOverride.setAttribute('data-newsarchive', 'unlock');
     styleOverride.textContent = unlockCss;
     document.head.appendChild(styleOverride);
-  }, { selectors: OVERLAY_SELECTORS_BROWSER, unlockCss: UNLOCK_CSS });
+
+    // Strip lock/gate classes from article containers
+    for (const patternStr of lockPatterns) {
+      const pattern = new RegExp(patternStr);
+      document.querySelectorAll('*').forEach(el => {
+        if (!el.closest('article, [role="article"], [class*="article-body"], [class*="story-body"], main')) return;
+        [...el.classList].forEach(cls => {
+          if (pattern.test(cls)) el.classList.remove(cls);
+        });
+      });
+    }
+
+    // Reset negative text-indent used to hide content off-screen
+    document.querySelectorAll('article *, [role="article"] *, [class*="article-body"] *, [class*="story-body"] *, main *').forEach(el => {
+      const style = window.getComputedStyle(el);
+      if (parseInt(style.textIndent, 10) < -99) {
+        el.style.textIndent = '0';
+      }
+    });
+  }, {
+    selectors: OVERLAY_SELECTORS_BROWSER,
+    unlockCss: UNLOCK_CSS,
+    lockPatterns: LOCK_CLASS_PATTERNS.map(p => p.source),
+  });
 }
 
 /**
@@ -81,6 +142,29 @@ async function fetchPage(url) {
 
     const page = await context.newPage();
 
+    // Clear metered paywall state (localStorage/sessionStorage counters)
+    if (config.clearMeterState) {
+      await page.addInitScript(() => {
+        const meterPatterns = ['meter', 'paywall', 'article_count', 'pw_', 'visits', 'articleCount', 'freeArticle'];
+        try {
+          for (let i = localStorage.length - 1; i >= 0; i--) {
+            const key = localStorage.key(i);
+            if (key && meterPatterns.some(p => key.toLowerCase().includes(p))) {
+              localStorage.removeItem(key);
+            }
+          }
+          for (let i = sessionStorage.length - 1; i >= 0; i--) {
+            const key = sessionStorage.key(i);
+            if (key && meterPatterns.some(p => key.toLowerCase().includes(p))) {
+              sessionStorage.removeItem(key);
+            }
+          }
+        } catch {
+          // Storage may be unavailable
+        }
+      });
+    }
+
     // Navigate with configured wait strategy
     const waitUntil = config.waitStrategy === 'domcontentloaded'
       ? 'domcontentloaded'
@@ -93,6 +177,12 @@ async function fetchPage(url) {
 
     // Give a brief moment for late-loading content
     await page.waitForTimeout(1000);
+
+    // Scroll page to trigger Intersection Observer lazy loading
+    await scrollToBottom(page);
+
+    // Promote lazy-load data attributes to src
+    await promoteLazyImages(page);
 
     // Dismiss overlays (paywall, cookie consent, etc.)
     await dismissOverlays(page);

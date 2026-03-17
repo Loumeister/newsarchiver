@@ -34,6 +34,13 @@ function collectAssetUrls(html, baseUrl) {
   $('img[src]').each((_, el) => addUrl($(el).attr('src')));
   $('img[srcset]').each((_, el) => parseSrcset($(el).attr('srcset')).forEach(addUrl));
 
+  // Lazy-load data attributes on img and source elements
+  const lazyAttrs = ['data-src', 'data-lazy-src', 'data-original', 'data-lazy', 'data-hi-res-src'];
+  for (const attr of lazyAttrs) {
+    $(`img[${attr}]`).each((_, el) => addUrl($(el).attr(attr)));
+    $(`source[${attr}]`).each((_, el) => addUrl($(el).attr(attr)));
+  }
+
   // <source src="..."> and <source srcset="...">
   $('source[src]').each((_, el) => addUrl($(el).attr('src')));
   $('source[srcset]').each((_, el) => parseSrcset($(el).attr('srcset')).forEach(addUrl));
