@@ -172,6 +172,39 @@ async function fetchFromGoogleCache(url) {
 }
 
 /**
+ * Fetch a page snapshot from archive.is (archive.today) as a fallback.
+ * This is the most reliable method for hard-paywalled sites like AD.nl
+ * where content is never delivered to non-subscribers.
+ * Returns the HTML content or null if unavailable.
+ */
+async function fetchFromArchiveIs(url) {
+  // archive.is provides the most recent snapshot at /newest/<url>
+  const archiveUrl = `https://archive.is/newest/${encodeURIComponent(url)}`;
+  try {
+    const response = await fetch(archiveUrl, {
+      headers: {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+      },
+      redirect: 'follow',
+    });
+    if (!response.ok) return null;
+
+    const html = await response.text();
+
+    // Verify we got a real page, not an error or "no results" page
+    if (html.includes('No results') || html.includes('no snapshots') || !hasEnoughContent(html)) {
+      return null;
+    }
+
+    return html;
+  } catch (err) {
+    console.warn('[archive] archive.is fetch failed:', err.message);
+    return null;
+  }
+}
+
+/**
  * Evaluate the quality of fetched HTML content.
  * Returns true if it appears to contain a real article.
  */
@@ -363,7 +396,24 @@ async function handleArchive(tabId) {
       }
     }
 
-    // Attempt 3: Content script (captures rendered DOM from the tab)
+    // Attempt 3: archive.is snapshot (best for hard-paywalled sites like AD.nl)
+    if (!pageHtml) {
+      console.log('[archive] Trying archive.is snapshot');
+      const archiveHtml = await fetchFromArchiveIs(pageUrl);
+      if (archiveHtml) {
+        const article = extractJsonLdArticle(archiveHtml);
+        if (article) {
+          console.log('[archive] Extracted article from archive.is JSON-LD');
+          pageHtml = buildArticleHtml(article, pageUrl, archiveHtml);
+          pageTitle = article.headline || pageTitle;
+        } else if (hasEnoughContent(archiveHtml)) {
+          console.log('[archive] Using archive.is content');
+          pageHtml = archiveHtml;
+        }
+      }
+    }
+
+    // Attempt 4: Content script (captures rendered DOM from the tab)
     if (!pageHtml) {
       console.warn('[archive] Falling back to content script');
       const pageData = await injectAndCapture(tabId);
