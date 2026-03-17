@@ -195,6 +195,47 @@
   // Capture the fully-rendered HTML
   const html = document.documentElement.outerHTML;
 
+  // Try to extract article content from JSON-LD structured data
+  let jsonLdArticle = null;
+  try {
+    const jsonLdScripts = document.querySelectorAll('script[type="application/ld+json"]');
+    for (const script of jsonLdScripts) {
+      try {
+        const data = JSON.parse(script.textContent);
+        const items = Array.isArray(data) ? data : [data];
+        for (const item of items) {
+          const candidates = item['@graph'] ? [...item['@graph'], item] : [item];
+          for (const candidate of candidates) {
+            if (candidate.articleBody && candidate.articleBody.length > 200) {
+              const author = candidate.author
+                ? (typeof candidate.author === 'string' ? candidate.author
+                  : Array.isArray(candidate.author)
+                    ? candidate.author.map(a => typeof a === 'string' ? a : a.name || '').filter(Boolean).join(', ')
+                    : candidate.author.name || '')
+                : '';
+              const image = candidate.image
+                ? (typeof candidate.image === 'string' ? candidate.image
+                  : Array.isArray(candidate.image)
+                    ? (typeof candidate.image[0] === 'string' ? candidate.image[0] : (candidate.image[0] && candidate.image[0].url) || '')
+                    : candidate.image.url || '')
+                : '';
+              jsonLdArticle = {
+                articleBody: candidate.articleBody,
+                headline: candidate.headline || '',
+                author,
+                datePublished: candidate.datePublished || '',
+                image,
+              };
+              break;
+            }
+          }
+          if (jsonLdArticle) break;
+        }
+      } catch { /* skip malformed JSON-LD */ }
+      if (jsonLdArticle) break;
+    }
+  } catch { /* JSON-LD extraction failed */ }
+
   // Send the captured data back to the background service worker
   chrome.runtime.sendMessage({
     action: 'pageCaptured',
@@ -202,6 +243,7 @@
       html,
       title: document.title,
       url: window.location.href,
+      jsonLdArticle,
     },
   });
 })();

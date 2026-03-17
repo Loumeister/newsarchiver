@@ -172,6 +172,39 @@ async function fetchFromGoogleCache(url) {
 }
 
 /**
+ * Fetch a page snapshot from archive.is (archive.today) as a fallback.
+ * This is the most reliable method for hard-paywalled sites like AD.nl
+ * where content is never delivered to non-subscribers.
+ * Returns the HTML content or null if unavailable.
+ */
+async function fetchFromArchiveIs(url) {
+  // archive.is provides the most recent snapshot at /newest/<url>
+  const archiveUrl = `https://archive.is/newest/${encodeURIComponent(url)}`;
+  try {
+    const response = await fetch(archiveUrl, {
+      headers: {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+      },
+      redirect: 'follow',
+    });
+    if (!response.ok) return null;
+
+    const html = await response.text();
+
+    // Verify we got a real page, not an error or "no results" page
+    if (html.includes('No results') || html.includes('no snapshots') || !hasEnoughContent(html)) {
+      return null;
+    }
+
+    return html;
+  } catch (err) {
+    console.warn('[archive] archive.is fetch failed:', err.message);
+    return null;
+  }
+}
+
+/**
  * Evaluate the quality of fetched HTML content.
  * Returns true if it appears to contain a real article.
  */
@@ -188,6 +221,94 @@ function hasEnoughContent(html) {
   }, 0);
 
   return totalTextLength >= 500;
+}
+
+/**
+ * Extract article content from JSON-LD structured data in HTML.
+ * Many publishers (DPG Media, NYT, etc.) embed full article text in
+ * <script type="application/ld+json"> for SEO, even on paywalled pages.
+ */
+function extractJsonLdArticle(html) {
+  const jsonLdRegex = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let match;
+  while ((match = jsonLdRegex.exec(html)) !== null) {
+    try {
+      const data = JSON.parse(match[1]);
+      const items = Array.isArray(data) ? data : [data];
+      for (const item of items) {
+        const candidates = item['@graph'] ? [...item['@graph'], item] : [item];
+        for (const candidate of candidates) {
+          if (candidate.articleBody && candidate.articleBody.length > 200) {
+            return {
+              articleBody: candidate.articleBody,
+              headline: candidate.headline || '',
+              author: extractAuthor(candidate),
+              datePublished: candidate.datePublished || '',
+              image: extractImage(candidate),
+            };
+          }
+        }
+      }
+    } catch { /* skip malformed JSON-LD */ }
+  }
+  return null;
+}
+
+function extractAuthor(item) {
+  if (!item.author) return '';
+  if (typeof item.author === 'string') return item.author;
+  if (Array.isArray(item.author)) {
+    return item.author.map(a => typeof a === 'string' ? a : a.name || '').filter(Boolean).join(', ');
+  }
+  return item.author.name || '';
+}
+
+function extractImage(item) {
+  if (!item.image) return '';
+  if (typeof item.image === 'string') return item.image;
+  if (Array.isArray(item.image)) {
+    const first = item.image[0];
+    return typeof first === 'string' ? first : (first && first.url) || '';
+  }
+  return item.image.url || '';
+}
+
+/**
+ * Build a clean article HTML page from extracted JSON-LD data.
+ * Preserves the <head> from the original HTML for meta tags/styles.
+ */
+function buildArticleHtml(article, originalUrl, originalHtml) {
+  const paragraphs = article.articleBody
+    .split(/\n+/)
+    .filter(p => p.trim().length > 0)
+    .map(p => `<p>${escapeHtml(p.trim())}</p>`)
+    .join('\n    ');
+
+  const headMatch = originalHtml.match(/<head[^>]*>([\s\S]*?)<\/head>/i);
+  const headContent = headMatch
+    ? headMatch[1]
+    : `<meta charset="utf-8"><title>${escapeHtml(article.headline)}</title>`;
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  ${headContent}
+</head>
+<body>
+  <article>
+    <h1>${escapeHtml(article.headline)}</h1>
+    ${article.author ? `<p class="author">By ${escapeHtml(article.author)}</p>` : ''}
+    ${article.datePublished ? `<time datetime="${escapeHtml(article.datePublished)}">${escapeHtml(article.datePublished)}</time>` : ''}
+    ${article.image ? `<figure><img src="${escapeHtml(article.image)}" alt=""></figure>` : ''}
+    ${paragraphs}
+  </article>
+</body>
+</html>`;
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 // Track pending captures: tabId → { resolve, reject }
@@ -233,49 +354,100 @@ async function handleArchive(tabId) {
   let pageHtml, pageUrl, pageTitle;
 
   if (settings.googlebotMode) {
-    let useContentScript = false;
     const tab = await chrome.tabs.get(tabId);
     pageUrl = tab.url;
     pageTitle = tab.title || '';
+    let rawHtml = null;
 
     // Attempt 1: Googlebot fetch (with real UA override via declarativeNetRequest)
     try {
-      pageHtml = await fetchWithGooglebot(pageUrl);
-      if (!hasEnoughContent(pageHtml)) {
-        console.warn('[archive] Googlebot HTML has insufficient content, trying Google Cache');
-        pageHtml = null;
-      }
+      rawHtml = await fetchWithGooglebot(pageUrl);
     } catch (err) {
       console.warn('[archive] Googlebot fetch failed:', err.message);
-      pageHtml = null;
     }
 
-    // Attempt 2: Google Web Cache fallback
-    if (!pageHtml) {
-      const cacheHtml = await fetchFromGoogleCache(pageUrl);
-      if (cacheHtml && hasEnoughContent(cacheHtml)) {
-        console.log('[archive] Using Google Cache content');
-        pageHtml = cacheHtml;
+    // Try JSON-LD articleBody extraction from Googlebot HTML
+    if (rawHtml) {
+      const article = extractJsonLdArticle(rawHtml);
+      if (article) {
+        console.log('[archive] Extracted article from JSON-LD articleBody');
+        pageHtml = buildArticleHtml(article, pageUrl, rawHtml);
+        pageTitle = article.headline || pageTitle;
+      } else if (hasEnoughContent(rawHtml)) {
+        pageHtml = rawHtml;
+      } else {
+        console.warn('[archive] Googlebot HTML has insufficient content, trying Google Cache');
       }
     }
 
-    // Attempt 3: Content script (captures rendered DOM from the tab)
+    // Attempt 2: Google Web Cache fallback (also try JSON-LD extraction)
     if (!pageHtml) {
-      console.warn('[archive] Falling back to content script');
-      useContentScript = true;
+      const cacheHtml = await fetchFromGoogleCache(pageUrl);
+      if (cacheHtml) {
+        const article = extractJsonLdArticle(cacheHtml);
+        if (article) {
+          console.log('[archive] Extracted article from Google Cache JSON-LD');
+          pageHtml = buildArticleHtml(article, pageUrl, cacheHtml);
+          pageTitle = article.headline || pageTitle;
+        } else if (hasEnoughContent(cacheHtml)) {
+          console.log('[archive] Using Google Cache content');
+          pageHtml = cacheHtml;
+        }
+      }
     }
 
-    if (useContentScript) {
+    // Attempt 3: archive.is snapshot (best for hard-paywalled sites like AD.nl)
+    if (!pageHtml) {
+      console.log('[archive] Trying archive.is snapshot');
+      const archiveHtml = await fetchFromArchiveIs(pageUrl);
+      if (archiveHtml) {
+        const article = extractJsonLdArticle(archiveHtml);
+        if (article) {
+          console.log('[archive] Extracted article from archive.is JSON-LD');
+          pageHtml = buildArticleHtml(article, pageUrl, archiveHtml);
+          pageTitle = article.headline || pageTitle;
+        } else if (hasEnoughContent(archiveHtml)) {
+          console.log('[archive] Using archive.is content');
+          pageHtml = archiveHtml;
+        }
+      }
+    }
+
+    // Attempt 4: Content script (captures rendered DOM from the tab)
+    if (!pageHtml) {
+      console.warn('[archive] Falling back to content script');
       const pageData = await injectAndCapture(tabId);
       pageHtml = pageData.html;
       pageUrl = pageData.url;
       pageTitle = pageData.title;
+
+      // Try JSON-LD extraction from content script HTML too
+      if (pageData.jsonLdArticle) {
+        console.log('[archive] Using JSON-LD from content script');
+        pageHtml = buildArticleHtml(pageData.jsonLdArticle, pageUrl, pageHtml);
+        pageTitle = pageData.jsonLdArticle.headline || pageTitle;
+      } else {
+        const article = extractJsonLdArticle(pageHtml);
+        if (article) {
+          console.log('[archive] Extracted article from content script JSON-LD');
+          pageHtml = buildArticleHtml(article, pageUrl, pageHtml);
+          pageTitle = article.headline || pageTitle;
+        }
+      }
     }
   } else {
     const pageData = await injectAndCapture(tabId);
     pageHtml = pageData.html;
     pageUrl = pageData.url;
     pageTitle = pageData.title;
+
+    // Try JSON-LD extraction even in non-Googlebot mode
+    const article = extractJsonLdArticle(pageHtml);
+    if (article && !hasEnoughContent(pageHtml)) {
+      console.log('[archive] Extracted article from JSON-LD (non-Googlebot mode)');
+      pageHtml = buildArticleHtml(article, pageUrl, pageHtml);
+      pageTitle = article.headline || pageTitle;
+    }
   }
 
   // Step 3: Collect and fetch assets (collectAssetUrls runs in offscreen doc for DOM access)
