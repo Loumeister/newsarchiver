@@ -52,6 +52,9 @@ function generateSnapshotId() {
 const GOOGLEBOT_UA = 'Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)';
 const GOOGLE_REFERER = 'https://www.google.com/';
 
+// Rule ID for the temporary declarativeNetRequest rule
+const DNR_RULE_ID = 1;
+
 /**
  * Get user settings from chrome.storage.sync.
  */
@@ -62,24 +65,129 @@ async function getSettings() {
 }
 
 /**
- * Re-fetch a URL using a Googlebot user agent and Google referer.
- * This causes most news sites to serve full, unpaywalled content.
+ * Add a temporary declarativeNetRequest rule to override User-Agent
+ * and Referer headers for a specific URL. fetch() cannot override
+ * User-Agent (it's a forbidden header), so we must use DNR.
  */
-async function fetchWithGooglebot(url) {
-  const response = await fetch(url, {
-    headers: {
-      'User-Agent': GOOGLEBOT_UA,
-      'Referer': GOOGLE_REFERER,
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'en-US,en;q=0.5',
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Fetch failed: ${response.status} ${response.statusText}`);
+async function addGooglebotDnrRule(url) {
+  let urlFilter;
+  try {
+    const u = new URL(url);
+    urlFilter = u.origin + u.pathname;
+  } catch {
+    urlFilter = url;
   }
 
-  return await response.text();
+  await chrome.declarativeNetRequest.updateDynamicRules({
+    removeRuleIds: [DNR_RULE_ID],
+    addRules: [{
+      id: DNR_RULE_ID,
+      priority: 1,
+      action: {
+        type: 'modifyHeaders',
+        requestHeaders: [
+          { header: 'User-Agent', operation: 'set', value: GOOGLEBOT_UA },
+          { header: 'Referer', operation: 'set', value: GOOGLE_REFERER },
+          { header: 'Accept', operation: 'set', value: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' },
+        ],
+      },
+      condition: {
+        urlFilter,
+        resourceTypes: ['xmlhttprequest', 'other'],
+      },
+    }],
+  });
+}
+
+/**
+ * Remove the temporary declarativeNetRequest rule.
+ */
+async function removeGooglebotDnrRule() {
+  await chrome.declarativeNetRequest.updateDynamicRules({
+    removeRuleIds: [DNR_RULE_ID],
+  });
+}
+
+/**
+ * Re-fetch a URL using a Googlebot user agent and Google referer.
+ * Uses declarativeNetRequest to override User-Agent at the network level,
+ * since fetch() cannot override this forbidden header.
+ */
+async function fetchWithGooglebot(url) {
+  await addGooglebotDnrRule(url);
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Fetch failed: ${response.status} ${response.statusText}`);
+    }
+
+    return await response.text();
+  } finally {
+    await removeGooglebotDnrRule();
+  }
+}
+
+/**
+ * Fetch a page from Google's web cache as a fallback.
+ * Returns the HTML content or null if unavailable.
+ */
+async function fetchFromGoogleCache(url) {
+  const cacheUrl = `https://webcache.googleusercontent.com/search?q=cache:${encodeURIComponent(url)}&strip=1`;
+  try {
+    const response = await fetch(cacheUrl, {
+      headers: {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+      },
+    });
+    if (!response.ok) return null;
+
+    let html = await response.text();
+
+    // Google's cache wraps the content — extract everything after Google's
+    // cache header div. The actual page starts after the first </div> that
+    // closes Google's metadata bar.
+    const marker = '<div style="position:relative">';
+    const markerIdx = html.indexOf(marker);
+    if (markerIdx !== -1) {
+      html = html.substring(markerIdx + marker.length);
+      // Remove the closing </div> that belongs to Google's wrapper
+      const lastDiv = html.lastIndexOf('</div>');
+      if (lastDiv !== -1) {
+        html = html.substring(0, lastDiv);
+      }
+    }
+
+    return html;
+  } catch (err) {
+    console.warn('[archive] Google Cache fetch failed:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Evaluate the quality of fetched HTML content.
+ * Returns true if it appears to contain a real article.
+ */
+function hasEnoughContent(html) {
+  // Count <p> tags
+  const pCount = (html.match(/<p[\s>]/gi) || []).length;
+  if (pCount < 3) return false;
+
+  // Extract text from <p> tags and check total length
+  const pTextMatches = html.match(/<p[^>]*>([\s\S]*?)<\/p>/gi) || [];
+  const totalTextLength = pTextMatches.reduce((sum, match) => {
+    const text = match.replace(/<[^>]+>/g, '').trim();
+    return sum + text.length;
+  }, 0);
+
+  return totalTextLength >= 500;
 }
 
 // Track pending captures: tabId → { resolve, reject }
@@ -126,21 +234,34 @@ async function handleArchive(tabId) {
 
   if (settings.googlebotMode) {
     let useContentScript = false;
-    try {
-      const tab = await chrome.tabs.get(tabId);
-      pageUrl = tab.url;
-      pageTitle = tab.title || '';
-      pageHtml = await fetchWithGooglebot(pageUrl);
+    const tab = await chrome.tabs.get(tabId);
+    pageUrl = tab.url;
+    pageTitle = tab.title || '';
 
-      // Validate: if the fetched HTML has too few <p> tags, it's likely
-      // a JS-rendered shell (e.g. AD.nl) — fall back to content script
-      const pCount = (pageHtml.match(/<p[\s>]/gi) || []).length;
-      if (pCount < 3) {
-        console.warn(`[archive] Googlebot HTML has only ${pCount} <p> tags, falling back to content script`);
-        useContentScript = true;
+    // Attempt 1: Googlebot fetch (with real UA override via declarativeNetRequest)
+    try {
+      pageHtml = await fetchWithGooglebot(pageUrl);
+      if (!hasEnoughContent(pageHtml)) {
+        console.warn('[archive] Googlebot HTML has insufficient content, trying Google Cache');
+        pageHtml = null;
       }
     } catch (err) {
-      console.warn('[archive] Googlebot fetch failed, falling back to content script:', err.message);
+      console.warn('[archive] Googlebot fetch failed:', err.message);
+      pageHtml = null;
+    }
+
+    // Attempt 2: Google Web Cache fallback
+    if (!pageHtml) {
+      const cacheHtml = await fetchFromGoogleCache(pageUrl);
+      if (cacheHtml && hasEnoughContent(cacheHtml)) {
+        console.log('[archive] Using Google Cache content');
+        pageHtml = cacheHtml;
+      }
+    }
+
+    // Attempt 3: Content script (captures rendered DOM from the tab)
+    if (!pageHtml) {
+      console.warn('[archive] Falling back to content script');
       useContentScript = true;
     }
 

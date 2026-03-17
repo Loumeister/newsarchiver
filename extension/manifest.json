@@ -9,7 +9,8 @@
     "storage",
     "downloads",
     "tabs",
-    "offscreen"
+    "offscreen",
+    "declarativeNetRequest"
   ],
   "host_permissions": [
     "<all_urls>"
