@@ -82,6 +82,26 @@ data/
 
 A Chrome extension version is also available that runs entirely in your browser — no server needed. See [extension/README.md](extension/README.md) for installation and usage instructions.
 
+## Recommended Agency Team
+
+For this project, the best-fit "Agency" squad is:
+
+1. **🏗️ Backend Architect** — core value is in reliable fetch/rewrite/storage pipelines, API design, and long-term maintainability of the archiving service.
+2. **🔒 Security Engineer** — this app ingests untrusted HTML and assets, so secure sanitization, SSRF hardening, and safe defaults are critical.
+3. **🚀 DevOps Automator** — Playwright + Chromium setup, runtime dependencies, and deployment/CI consistency are a major operational concern.
+4. **👁️ Code Reviewer** — helps continuously enforce quality around URL rewriting, parser edge-cases, and regression risk in archival fidelity.
+5. **📸 Evidence Collector** — snapshot quality is visual/output-driven, so screenshot-backed verification is a natural QA gate.
+6. **📚 Technical Writer** — this project benefits from strong user docs (setup, legal constraints, cookie workflows, extension usage).
+
+### Why this mix works
+
+- The product is infrastructure-heavy (fetching, rewriting, storing, serving), so backend + ops + security should lead.
+- Success criteria are output correctness and safety, so review + evidence-driven testing reduce regressions.
+- Adoption depends on clarity of setup and legal boundaries, so technical documentation is part of product quality.
+
+> Installed locally in this environment at `/.claude/agents`: Backend-Architect, Security-Engineer, DevOps-Automator, Code-Reviewer, Evidence-Collector, Technical-Writer.
+
+
 ## Legal disclaimer
 
 **This tool is intended for personal archival and research purposes only.** Bypassing paywalls may violate the terms of service of the archived website and/or applicable laws in your jurisdiction. The user assumes all responsibility for how this tool is used. The authors of this software do not encourage or condone any unlawful use.
