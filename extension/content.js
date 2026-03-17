@@ -56,6 +56,10 @@
     '[class*="premium-gate"]', '[class*="cookie"]', '[id*="consent"]',
     '[class*="overlay"]', '[class*="modal"]', '[class*="subscribe-gate"]',
     '[class*="registration-wall"]',
+    '[data-paywall]', '[data-premium]', '[class*="meter"]',
+    '[aria-modal="true"]', '[class*="piano"]', '[id*="piano"]',
+    '[class*="signin"]', '[class*="sign-in"]',
+    '[class*="regwall"]', '[class*="tp-modal"]', '[id*="tp-modal"]',
   ];
 
   for (const sel of overlaySelectors) {
@@ -63,12 +67,21 @@
       const style = window.getComputedStyle(el);
       if (
         style.position === 'fixed' || style.position === 'absolute' ||
-        style.position === 'sticky' || el.getAttribute('role') === 'dialog'
+        style.position === 'sticky' || el.getAttribute('role') === 'dialog' ||
+        el.getAttribute('aria-modal') === 'true'
       ) {
         el.remove();
       }
     });
   }
+
+  // Remove interstitial/subscribe prompts that block content
+  document.querySelectorAll('[class*="interstitial"], [class*="barrier"], [class*="gate"]').forEach(el => {
+    const style = window.getComputedStyle(el);
+    if (style.position === 'fixed' || style.position === 'absolute' || style.zIndex > 999) {
+      el.remove();
+    }
+  });
 
   // Restore scroll in case it was locked
   document.body.style.overflow = 'auto';
