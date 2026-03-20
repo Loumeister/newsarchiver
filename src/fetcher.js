@@ -5,6 +5,7 @@ const path = require('path');
 const config = require('./config');
 const { OVERLAY_SELECTORS_BROWSER, UNLOCK_CSS, LOCK_CLASS_PATTERNS } = require('./shared/constants');
 const { getSiteHandler } = require('./sites');
+const { runFallbackChain, hasEnoughContent } = require('./fallback');
 
 /**
  * Generate a short random snapshot ID (6 hex chars).
@@ -214,18 +215,36 @@ async function fetchPage(url) {
     await page.waitForTimeout(500);
 
     // Capture the fully-rendered HTML
-    const html = await page.evaluate(() => document.documentElement.outerHTML);
+    const rawHtml = await page.evaluate(() => document.documentElement.outerHTML);
 
     // Get page title
-    const title = await page.title();
+    let title = await page.title();
 
     // Capture full-page screenshot
     const screenshot = await page.screenshot({ fullPage: true, type: 'png' });
 
+    // Close browser before running HTTP fallbacks (frees resources)
     await browser.close();
     browser = null;
 
-    return { html: `<!DOCTYPE html>\n<html${getHtmlAttrs(html)}>\n${getInnerContent(html)}`, screenshot, title, snapshotId };
+    // Content validation and fallback chain
+    let finalHtml = `<!DOCTYPE html>\n<html${getHtmlAttrs(rawHtml)}>\n${getInnerContent(rawHtml)}`;
+    let fallbackSource = 'playwright';
+
+    const isHardPaywall = siteHandler && siteHandler.paywallType === 'hard';
+
+    if (config.enableFallbackChain && (isHardPaywall || !hasEnoughContent(finalHtml))) {
+      console.log('[fetcher] Content insufficient or hard paywall detected, running fallback chain...');
+      const fallbackResult = await runFallbackChain(url, finalHtml, { siteHandler });
+      if (fallbackResult) {
+        finalHtml = fallbackResult.html;
+        title = fallbackResult.title || title;
+        fallbackSource = fallbackResult.source;
+        console.log(`[fetcher] Fallback succeeded via: ${fallbackSource}`);
+      }
+    }
+
+    return { html: finalHtml, screenshot, title, snapshotId, fallbackSource };
   } finally {
     if (browser) await browser.close().catch(() => {});
   }

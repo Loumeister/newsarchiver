@@ -1,5 +1,6 @@
 const { getSiteHandler, handlers } = require('../src/sites');
 const nyt = require('../src/sites/nyt');
+const dpg = require('../src/sites/dpg');
 
 describe('Site handler registry', () => {
   test('returns NYT handler for nytimes.com URLs', () => {
@@ -8,15 +9,23 @@ describe('Site handler registry', () => {
     expect(getSiteHandler('https://cooking.nytimes.com/recipes/123')).toBe(nyt);
   });
 
+  test('returns DPG handler for Dutch news sites', () => {
+    expect(getSiteHandler('https://www.ad.nl/article')).toBe(dpg);
+    expect(getSiteHandler('https://www.volkskrant.nl/article')).toBe(dpg);
+    expect(getSiteHandler('https://www.trouw.nl/article')).toBe(dpg);
+    expect(getSiteHandler('https://www.parool.nl/article')).toBe(dpg);
+  });
+
   test('returns null for non-matching URLs', () => {
     expect(getSiteHandler('https://www.washingtonpost.com/article')).toBeNull();
     expect(getSiteHandler('https://example.com')).toBeNull();
     expect(getSiteHandler('https://notnytimes.com')).toBeNull();
   });
 
-  test('handlers array contains at least NYT', () => {
-    expect(handlers.length).toBeGreaterThanOrEqual(1);
+  test('handlers array contains NYT and DPG', () => {
+    expect(handlers.length).toBeGreaterThanOrEqual(2);
     expect(handlers).toContain(nyt);
+    expect(handlers).toContain(dpg);
   });
 });
 
@@ -68,5 +77,37 @@ describe('NYT handler', () => {
     expect(matchesGateway).toBe(true);
     const matchesTruncated = nyt.lockClassPatterns.some(p => p.test('truncated'));
     expect(matchesTruncated).toBe(true);
+  });
+});
+
+describe('DPG handler', () => {
+  test('has required properties', () => {
+    expect(dpg.name).toBe('dpg');
+    expect(typeof dpg.matches).toBe('function');
+    expect(dpg.paywallType).toBe('hard');
+    expect(Array.isArray(dpg.overlaySelectors)).toBe(true);
+    expect(Array.isArray(dpg.lockClassPatterns)).toBe(true);
+    expect(typeof dpg.unlockCss).toBe('string');
+  });
+
+  test('matches all DPG Media domains', () => {
+    const domains = ['ad.nl', 'volkskrant.nl', 'trouw.nl', 'parool.nl',
+      'tubantia.nl', 'ed.nl', 'bndestem.nl', 'pzc.nl',
+      'gelderlander.nl', 'destentor.nl', 'bd.nl'];
+    for (const domain of domains) {
+      expect(dpg.matches(`https://www.${domain}/article`)).toBe(true);
+      expect(dpg.matches(`https://${domain}/article`)).toBe(true);
+    }
+  });
+
+  test('does not match non-DPG sites', () => {
+    expect(dpg.matches('https://example.com')).toBe(false);
+    expect(dpg.matches('https://www.nytimes.com')).toBe(false);
+    expect(dpg.matches('invalid-url')).toBe(false);
+  });
+
+  test('has no preConfigure or postProcess (hard paywall)', () => {
+    expect(dpg.preConfigure).toBeUndefined();
+    expect(dpg.postProcess).toBeUndefined();
   });
 });

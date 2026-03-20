@@ -10,10 +10,13 @@
  *   overlaySelectors        – (optional) array of extra CSS selectors for overlay removal
  *   lockClassPatterns       – (optional) array of extra RegExp patterns for lock-class stripping
  *   unlockCss               – (optional) extra CSS to inject for content reveal
+ *   paywallType             – (optional) 'soft' (default) | 'hard'
+ *                              'hard' triggers the fallback chain (JSON-LD, Google Cache, archive.is)
  */
 
 const handlers = [
   require('./nyt'),
+  require('./dpg'),
 ];
 
 /**

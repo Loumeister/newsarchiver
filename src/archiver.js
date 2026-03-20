@@ -17,7 +17,7 @@ async function archiveUrl(url) {
 
   // Step 1: Fetch with headless browser
   console.log('[archive] Step 1/4: Fetching page with headless browser...');
-  const { html, screenshot, title, snapshotId } = await fetchPage(url);
+  const { html, screenshot, title, snapshotId, fallbackSource } = await fetchPage(url);
 
   // Step 2: Collect and fetch assets
   console.log('[archive] Step 2/4: Collecting and fetching assets...');
@@ -42,6 +42,7 @@ async function archiveUrl(url) {
     originalUrl: url,
     timestamp,
     title: title || '',
+    fallbackSource: fallbackSource || 'playwright',
   }, null, 2));
 
   console.log(`[archive] Done! Snapshot ID: ${snapshotId}`);
