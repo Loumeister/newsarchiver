@@ -14,9 +14,8 @@ const { injectToolbar } = require('./toolbar');
  * @param {string} snapshotId - The snapshot identifier
  * @param {string} originalUrl - The URL that was archived
  * @param {string} timestamp - ISO 8601 timestamp
- * @param {number} port - Server port for base tag
  */
-function rewriteHtml(html, assetMap, snapshotId, originalUrl, timestamp, port) {
+function rewriteHtml(html, assetMap, snapshotId, originalUrl, timestamp) {
   const $ = cheerio.load(html, { decodeEntities: false });
 
   // 3a. Remove noise elements
@@ -34,8 +33,8 @@ function rewriteHtml(html, assetMap, snapshotId, originalUrl, timestamp, port) {
   // 3d. Rewrite hyperlinks
   rewriteHyperlinks($, originalUrl);
 
-  // 3e. Set base tag
-  $('head').prepend(`<base href="http://localhost:${port}/snap/${snapshotId}/">`);
+  // 3e. Set base tag (root-relative so snapshot works on any host/port)
+  $('head').prepend(`<base href="/snap/${snapshotId}/">`);
 
   // 3f. Inject toolbar
   injectToolbar($, originalUrl, timestamp, snapshotId);

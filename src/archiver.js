@@ -29,7 +29,7 @@ async function archiveUrl(url) {
   // Step 3: Rewrite HTML
   console.log('[archive] Step 3/4: Rewriting HTML...');
   const timestamp = new Date().toISOString();
-  const rewrittenHtml = rewriteHtml(html, assetMap, snapshotId, url, timestamp, config.port);
+  const rewrittenHtml = rewriteHtml(html, assetMap, snapshotId, url, timestamp);
 
   // Step 4: Save snapshot
   console.log('[archive] Step 4/4: Saving snapshot...');

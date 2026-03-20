@@ -13,10 +13,8 @@ const { rewriteHtml } = require('../src/rewriter');
 const BASE_URL = 'https://example.com/article/test';
 const TIMESTAMP = '2025-01-15T12:00:00.000Z';
 const SNAPSHOT_ID = 'abc123';
-const PORT = 3000;
-
 function rewrite(html, assetMap = new Map()) {
-  return rewriteHtml(html, assetMap, SNAPSHOT_ID, BASE_URL, TIMESTAMP, PORT);
+  return rewriteHtml(html, assetMap, SNAPSHOT_ID, BASE_URL, TIMESTAMP);
 }
 
 // ─── Noise removal ───────────────────────────────────────────────────────
@@ -241,10 +239,10 @@ describe('meta tags and base tag', () => {
     expect(result).toContain(TIMESTAMP);
   });
 
-  test('sets base tag with correct port and snapshot ID', () => {
+  test('sets base tag with correct snapshot ID', () => {
     const html = '<html><head></head><body></body></html>';
     const result = rewrite(html);
-    expect(result).toContain(`<base href="http://localhost:${PORT}/snap/${SNAPSHOT_ID}/">`);
+    expect(result).toContain(`<base href="/snap/${SNAPSHOT_ID}/">`);
   });
 });
 

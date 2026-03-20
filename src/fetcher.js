@@ -223,6 +223,13 @@ async function fetchPage(url) {
     // Capture full-page screenshot
     const screenshot = await page.screenshot({ fullPage: true, type: 'png' });
 
+    // Let site handler confirm content was captured before closing browser
+    let siteHandlerFoundContent = false;
+    if (siteHandler && siteHandler.extractContent) {
+      const extracted = await siteHandler.extractContent(page);
+      siteHandlerFoundContent = !!(extracted && extracted.length > 200);
+    }
+
     // Close browser before running HTTP fallbacks (frees resources)
     await browser.close();
     browser = null;
@@ -233,7 +240,7 @@ async function fetchPage(url) {
 
     const isHardPaywall = siteHandler && siteHandler.paywallType === 'hard';
 
-    if (config.enableFallbackChain && (isHardPaywall || !hasEnoughContent(finalHtml))) {
+    if (config.enableFallbackChain && !siteHandlerFoundContent && (isHardPaywall || !hasEnoughContent(finalHtml))) {
       console.log('[fetcher] Content insufficient or hard paywall detected, running fallback chain...');
       const fallbackResult = await runFallbackChain(url, finalHtml, { siteHandler });
       if (fallbackResult) {

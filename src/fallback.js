@@ -123,7 +123,25 @@ async function fetchFromArchiveIs(url) {
 
     const html = await response.text();
 
-    if (html.includes('No results') || html.includes('no snapshots')) {
+    // Detect archive.is "no snapshot found" pages using multiple known patterns
+    const noSnapshotPatterns = [
+      'No results',
+      'no snapshots',
+      "hasn't been archived",
+      'is not archived',
+      'This page has not been archived',
+      'Sorry, this page',
+      '<title>archive.today</title>',
+    ];
+    if (noSnapshotPatterns.some(p => html.includes(p))) {
+      return null;
+    }
+
+    // Confirm response URL contains an archive timestamp (e.g. /20240101120000/)
+    // to distinguish a real snapshot from a search/error page
+    const finalUrl = response.url;
+    if (finalUrl && finalUrl.includes('archive.') && !(/\/\d{14}\//.test(finalUrl))) {
+      console.warn('[fallback] archive.is returned a non-snapshot URL:', finalUrl);
       return null;
     }
 
