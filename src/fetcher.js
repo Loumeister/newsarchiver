@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const config = require('./config');
 const { OVERLAY_SELECTORS_BROWSER, UNLOCK_CSS, LOCK_CLASS_PATTERNS } = require('./shared/constants');
+const { getSiteHandler } = require('./sites');
 
 /**
  * Generate a short random snapshot ID (6 hex chars).
@@ -65,7 +66,7 @@ async function promoteLazyImages(page) {
  * Dismiss overlays: paywall gates, cookie consent banners, modals.
  * Also inject CSS overrides to reveal truncated article content.
  */
-async function dismissOverlays(page) {
+async function dismissOverlays(page, { extraOverlaySelectors = [], extraLockPatterns = [], extraUnlockCss = '' } = {}) {
   await page.evaluate(({ selectors, unlockCss, lockPatterns }) => {
     // Remove paywall/overlay elements (only fixed/absolute/sticky positioned)
     for (const sel of selectors) {
@@ -110,9 +111,9 @@ async function dismissOverlays(page) {
       }
     });
   }, {
-    selectors: OVERLAY_SELECTORS_BROWSER,
-    unlockCss: UNLOCK_CSS,
-    lockPatterns: LOCK_CLASS_PATTERNS.map(p => p.source),
+    selectors: [...OVERLAY_SELECTORS_BROWSER, ...extraOverlaySelectors],
+    unlockCss: UNLOCK_CSS + '\n' + extraUnlockCss,
+    lockPatterns: [...LOCK_CLASS_PATTERNS.map(p => p.source), ...extraLockPatterns],
   });
 }
 
@@ -122,7 +123,12 @@ async function dismissOverlays(page) {
  */
 async function fetchPage(url) {
   const snapshotId = generateSnapshotId();
+  const siteHandler = getSiteHandler(url);
   let browser;
+
+  if (siteHandler) {
+    console.log(`[fetcher] Using site handler: ${siteHandler.name}`);
+  }
 
   try {
     browser = await chromium.launch({ headless: config.headless });
@@ -142,27 +148,36 @@ async function fetchPage(url) {
 
     const page = await context.newPage();
 
+    // Run site-specific pre-configuration (request interception, cookie manipulation, etc.)
+    if (siteHandler && siteHandler.preConfigure) {
+      await siteHandler.preConfigure(page, url);
+    }
+
     // Clear metered paywall state (localStorage/sessionStorage counters)
     if (config.clearMeterState) {
-      await page.addInitScript(() => {
-        const meterPatterns = ['meter', 'paywall', 'article_count', 'pw_', 'visits', 'articleCount', 'freeArticle'];
+      // Merge generic + site-specific meter key patterns
+      const meterPatterns = ['meter', 'paywall', 'article_count', 'pw_', 'visits', 'articleCount', 'freeArticle'];
+      if (siteHandler && siteHandler.meterKeys) {
+        meterPatterns.push(...siteHandler.meterKeys);
+      }
+      await page.addInitScript((patterns) => {
         try {
           for (let i = localStorage.length - 1; i >= 0; i--) {
             const key = localStorage.key(i);
-            if (key && meterPatterns.some(p => key.toLowerCase().includes(p))) {
+            if (key && patterns.some(p => key.toLowerCase().includes(p.toLowerCase()))) {
               localStorage.removeItem(key);
             }
           }
           for (let i = sessionStorage.length - 1; i >= 0; i--) {
             const key = sessionStorage.key(i);
-            if (key && meterPatterns.some(p => key.toLowerCase().includes(p))) {
+            if (key && patterns.some(p => key.toLowerCase().includes(p.toLowerCase()))) {
               sessionStorage.removeItem(key);
             }
           }
         } catch {
           // Storage may be unavailable
         }
-      });
+      }, meterPatterns);
     }
 
     // Navigate with configured wait strategy
@@ -184,8 +199,16 @@ async function fetchPage(url) {
     // Promote lazy-load data attributes to src
     await promoteLazyImages(page);
 
-    // Dismiss overlays (paywall, cookie consent, etc.)
-    await dismissOverlays(page);
+    // Dismiss overlays (paywall, cookie consent, etc.) — merge site-specific selectors
+    const extraOverlaySelectors = siteHandler ? siteHandler.overlaySelectors || [] : [];
+    const extraLockPatterns = siteHandler ? (siteHandler.lockClassPatterns || []).map(p => p.source) : [];
+    const extraUnlockCss = siteHandler ? siteHandler.unlockCss || '' : '';
+    await dismissOverlays(page, { extraOverlaySelectors, extraLockPatterns, extraUnlockCss });
+
+    // Run site-specific post-processing
+    if (siteHandler && siteHandler.postProcess) {
+      await siteHandler.postProcess(page, url);
+    }
 
     // Wait briefly after overlay removal for reflow
     await page.waitForTimeout(500);
