@@ -179,7 +179,8 @@ async function fetchFromGoogleCache(url) {
  */
 async function fetchFromArchiveIs(url) {
   // archive.is provides the most recent snapshot at /newest/<url>
-  const archiveUrl = `https://archive.is/newest/${encodeURIComponent(url)}`;
+  // archive.is expects the raw URL appended after /newest/, not percent-encoded
+  const archiveUrl = `https://archive.is/newest/${url}`;
   try {
     const response = await fetch(archiveUrl, {
       headers: {

@@ -105,7 +105,8 @@ async function fetchFromGoogleCache(url) {
  * @returns {Promise<string|null>}
  */
 async function fetchFromArchiveIs(url) {
-  const archiveUrl = `https://archive.is/newest/${encodeURIComponent(url)}`;
+  // archive.is expects the raw URL appended after /newest/, not percent-encoded
+  const archiveUrl = `https://archive.is/newest/${url}`;
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), config.fallbackTimeoutMs);
