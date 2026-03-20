@@ -130,7 +130,7 @@ describe('fetchPage', () => {
     await fetchPage('https://www.nytimes.com/2024/01/01/article.html');
     // NYT preConfigure calls page.route and page.addInitScript
     expect(_mocks.mockPage.route).toHaveBeenCalled();
-    // scrollToBottom, promoteLazyImages, dismissOverlays, NYT postProcess, final HTML capture
-    expect(_mocks.mockPage.evaluate).toHaveBeenCalledTimes(5);
+    // scrollToBottom, promoteLazyImages, dismissOverlays, NYT postProcess, final HTML capture, extractContent
+    expect(_mocks.mockPage.evaluate).toHaveBeenCalledTimes(6);
   });
 });

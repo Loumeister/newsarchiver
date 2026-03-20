@@ -50,8 +50,14 @@ function registerRoutes(app) {
     }
   });
 
+  // Validate snapshot ID format — must be exactly 6 hex characters
+  function isValidSnapshotId(id) {
+    return /^[0-9a-f]{6}$/.test(id);
+  }
+
   // ─── GET /snap/:id — Serve snapshot HTML ────────────────────────────────
   app.get('/snap/:id', (req, res) => {
+    if (!isValidSnapshotId(req.params.id)) return res.status(404).send('Snapshot not found');
     const htmlPath = path.join(config.dataDir, 'snapshots', req.params.id, 'index.html');
     if (!fs.existsSync(htmlPath)) {
       return res.status(404).send('Snapshot not found');
@@ -61,6 +67,7 @@ function registerRoutes(app) {
 
   // ─── GET /snap/:id/screenshot — Serve screenshot ───────────────────────
   app.get('/snap/:id/screenshot', (req, res) => {
+    if (!isValidSnapshotId(req.params.id)) return res.status(404).send('Screenshot not found');
     const pngPath = path.join(config.dataDir, 'snapshots', req.params.id, 'screenshot.png');
     if (!fs.existsSync(pngPath)) {
       return res.status(404).send('Screenshot not found');
@@ -70,6 +77,7 @@ function registerRoutes(app) {
 
   // ─── GET /snap/:id/meta — Serve metadata ───────────────────────────────
   app.get('/snap/:id/meta', (req, res) => {
+    if (!isValidSnapshotId(req.params.id)) return res.status(404).send('Metadata not found');
     const metaPath = path.join(config.dataDir, 'snapshots', req.params.id, 'meta.json');
     if (!fs.existsSync(metaPath)) {
       return res.status(404).send('Metadata not found');
@@ -79,6 +87,7 @@ function registerRoutes(app) {
 
   // ─── GET /snap/:id/download — Download snapshot as HTML ─────────────────
   app.get('/snap/:id/download', (req, res) => {
+    if (!isValidSnapshotId(req.params.id)) return res.status(404).send('Snapshot not found');
     const snapDir = path.join(config.dataDir, 'snapshots', req.params.id);
     const htmlPath = path.join(snapDir, 'index.html');
     if (!fs.existsSync(htmlPath)) {
