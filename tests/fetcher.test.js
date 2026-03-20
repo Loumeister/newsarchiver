@@ -6,6 +6,7 @@ jest.mock('playwright', () => {
     title: jest.fn().mockResolvedValue('Test Page'),
     screenshot: jest.fn().mockResolvedValue(Buffer.from('fake-screenshot')),
     addInitScript: jest.fn().mockResolvedValue(undefined),
+    route: jest.fn().mockResolvedValue(undefined),
   };
   const mockContext = {
     newPage: jest.fn().mockResolvedValue(mockPage),
@@ -121,7 +122,15 @@ describe('fetchPage', () => {
 
   test('calls addInitScript to clear metered paywall state', async () => {
     await fetchPage('https://example.com');
-    expect(_mocks.mockPage.addInitScript).toHaveBeenCalledTimes(1);
-    expect(_mocks.mockPage.addInitScript).toHaveBeenCalledWith(expect.any(Function));
+    // Generic meter clearing init script
+    expect(_mocks.mockPage.addInitScript).toHaveBeenCalledWith(expect.any(Function), expect.any(Array));
+  });
+
+  test('uses NYT site handler for nytimes.com URLs', async () => {
+    await fetchPage('https://www.nytimes.com/2024/01/01/article.html');
+    // NYT preConfigure calls page.route and page.addInitScript
+    expect(_mocks.mockPage.route).toHaveBeenCalled();
+    // scrollToBottom, promoteLazyImages, dismissOverlays, NYT postProcess, final HTML capture
+    expect(_mocks.mockPage.evaluate).toHaveBeenCalledTimes(5);
   });
 });

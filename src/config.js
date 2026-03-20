@@ -28,5 +28,7 @@ module.exports = {
   clearMeterState: process.env.CLEAR_METER_STATE !== 'false',
   userAgent: process.env.USER_AGENT || 'Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
   referer: process.env.REFERER || 'https://www.google.com/',
+  enableFallbackChain: process.env.ENABLE_FALLBACK !== 'false',
+  fallbackTimeoutMs: parseInt(process.env.FALLBACK_TIMEOUT_MS, 10) || 10000,
   dataDir: require('path').join(__dirname, '..', 'data'),
 };

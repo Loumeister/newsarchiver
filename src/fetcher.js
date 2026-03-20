@@ -4,6 +4,8 @@ const fs = require('fs');
 const path = require('path');
 const config = require('./config');
 const { OVERLAY_SELECTORS_BROWSER, UNLOCK_CSS, LOCK_CLASS_PATTERNS } = require('./shared/constants');
+const { getSiteHandler } = require('./sites');
+const { runFallbackChain, hasEnoughContent } = require('./fallback');
 
 /**
  * Generate a short random snapshot ID (6 hex chars).
@@ -65,7 +67,7 @@ async function promoteLazyImages(page) {
  * Dismiss overlays: paywall gates, cookie consent banners, modals.
  * Also inject CSS overrides to reveal truncated article content.
  */
-async function dismissOverlays(page) {
+async function dismissOverlays(page, { extraOverlaySelectors = [], extraLockPatterns = [], extraUnlockCss = '' } = {}) {
   await page.evaluate(({ selectors, unlockCss, lockPatterns }) => {
     // Remove paywall/overlay elements (only fixed/absolute/sticky positioned)
     for (const sel of selectors) {
@@ -110,9 +112,9 @@ async function dismissOverlays(page) {
       }
     });
   }, {
-    selectors: OVERLAY_SELECTORS_BROWSER,
-    unlockCss: UNLOCK_CSS,
-    lockPatterns: LOCK_CLASS_PATTERNS.map(p => p.source),
+    selectors: [...OVERLAY_SELECTORS_BROWSER, ...extraOverlaySelectors],
+    unlockCss: UNLOCK_CSS + '\n' + extraUnlockCss,
+    lockPatterns: [...LOCK_CLASS_PATTERNS.map(p => p.source), ...extraLockPatterns],
   });
 }
 
@@ -122,7 +124,12 @@ async function dismissOverlays(page) {
  */
 async function fetchPage(url) {
   const snapshotId = generateSnapshotId();
+  const siteHandler = getSiteHandler(url);
   let browser;
+
+  if (siteHandler) {
+    console.log(`[fetcher] Using site handler: ${siteHandler.name}`);
+  }
 
   try {
     browser = await chromium.launch({ headless: config.headless });
@@ -142,27 +149,36 @@ async function fetchPage(url) {
 
     const page = await context.newPage();
 
+    // Run site-specific pre-configuration (request interception, cookie manipulation, etc.)
+    if (siteHandler && siteHandler.preConfigure) {
+      await siteHandler.preConfigure(page, url);
+    }
+
     // Clear metered paywall state (localStorage/sessionStorage counters)
     if (config.clearMeterState) {
-      await page.addInitScript(() => {
-        const meterPatterns = ['meter', 'paywall', 'article_count', 'pw_', 'visits', 'articleCount', 'freeArticle'];
+      // Merge generic + site-specific meter key patterns
+      const meterPatterns = ['meter', 'paywall', 'article_count', 'pw_', 'visits', 'articleCount', 'freeArticle'];
+      if (siteHandler && siteHandler.meterKeys) {
+        meterPatterns.push(...siteHandler.meterKeys);
+      }
+      await page.addInitScript((patterns) => {
         try {
           for (let i = localStorage.length - 1; i >= 0; i--) {
             const key = localStorage.key(i);
-            if (key && meterPatterns.some(p => key.toLowerCase().includes(p))) {
+            if (key && patterns.some(p => key.toLowerCase().includes(p.toLowerCase()))) {
               localStorage.removeItem(key);
             }
           }
           for (let i = sessionStorage.length - 1; i >= 0; i--) {
             const key = sessionStorage.key(i);
-            if (key && meterPatterns.some(p => key.toLowerCase().includes(p))) {
+            if (key && patterns.some(p => key.toLowerCase().includes(p.toLowerCase()))) {
               sessionStorage.removeItem(key);
             }
           }
         } catch {
           // Storage may be unavailable
         }
-      });
+      }, meterPatterns);
     }
 
     // Navigate with configured wait strategy
@@ -184,25 +200,51 @@ async function fetchPage(url) {
     // Promote lazy-load data attributes to src
     await promoteLazyImages(page);
 
-    // Dismiss overlays (paywall, cookie consent, etc.)
-    await dismissOverlays(page);
+    // Dismiss overlays (paywall, cookie consent, etc.) — merge site-specific selectors
+    const extraOverlaySelectors = siteHandler ? siteHandler.overlaySelectors || [] : [];
+    const extraLockPatterns = siteHandler ? (siteHandler.lockClassPatterns || []).map(p => p.source) : [];
+    const extraUnlockCss = siteHandler ? siteHandler.unlockCss || '' : '';
+    await dismissOverlays(page, { extraOverlaySelectors, extraLockPatterns, extraUnlockCss });
+
+    // Run site-specific post-processing
+    if (siteHandler && siteHandler.postProcess) {
+      await siteHandler.postProcess(page, url);
+    }
 
     // Wait briefly after overlay removal for reflow
     await page.waitForTimeout(500);
 
     // Capture the fully-rendered HTML
-    const html = await page.evaluate(() => document.documentElement.outerHTML);
+    const rawHtml = await page.evaluate(() => document.documentElement.outerHTML);
 
     // Get page title
-    const title = await page.title();
+    let title = await page.title();
 
     // Capture full-page screenshot
     const screenshot = await page.screenshot({ fullPage: true, type: 'png' });
 
+    // Close browser before running HTTP fallbacks (frees resources)
     await browser.close();
     browser = null;
 
-    return { html: `<!DOCTYPE html>\n<html${getHtmlAttrs(html)}>\n${getInnerContent(html)}`, screenshot, title, snapshotId };
+    // Content validation and fallback chain
+    let finalHtml = `<!DOCTYPE html>\n<html${getHtmlAttrs(rawHtml)}>\n${getInnerContent(rawHtml)}`;
+    let fallbackSource = 'playwright';
+
+    const isHardPaywall = siteHandler && siteHandler.paywallType === 'hard';
+
+    if (config.enableFallbackChain && (isHardPaywall || !hasEnoughContent(finalHtml))) {
+      console.log('[fetcher] Content insufficient or hard paywall detected, running fallback chain...');
+      const fallbackResult = await runFallbackChain(url, finalHtml, { siteHandler });
+      if (fallbackResult) {
+        finalHtml = fallbackResult.html;
+        title = fallbackResult.title || title;
+        fallbackSource = fallbackResult.source;
+        console.log(`[fetcher] Fallback succeeded via: ${fallbackSource}`);
+      }
+    }
+
+    return { html: finalHtml, screenshot, title, snapshotId, fallbackSource };
   } finally {
     if (browser) await browser.close().catch(() => {});
   }
