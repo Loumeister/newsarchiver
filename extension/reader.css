@@ -1,0 +1,318 @@
+/**
+ * reader.css — Clean reader view for newsarchive PaywallVault
+ * Activated by adding .reader-active to <body>.
+ * Uses CSS custom properties for user-customisable font size, width, theme.
+ */
+
+/* ── Design tokens ─────────────────────────────────────────────────────── */
+:root {
+  --reader-font-size: 18px;
+  --reader-line-height: 1.75;
+  --reader-width: 720px;
+  --reader-font-family: Georgia, 'Times New Roman', serif;
+  --reader-ui-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Light theme (default) */
+  --reader-bg: #fafaf8;
+  --reader-text: #1a1a1a;
+  --reader-muted: #6b6b6b;
+  --reader-border: #e0e0d8;
+  --reader-accent: #4a6fa5;
+  --reader-code-bg: #f0f0ec;
+  --reader-blockquote-border: #c8c8c0;
+  --reader-header-bg: #ffffff;
+  --reader-header-border: #e0e0d8;
+  --reader-link: #4a6fa5;
+  --reader-link-visited: #7a5a9a;
+}
+
+/* Dark theme */
+body.reader-active.reader-dark {
+  --reader-bg: #1a1a2e;
+  --reader-text: #e8e6e1;
+  --reader-muted: #9a9a9a;
+  --reader-border: #2e2e4e;
+  --reader-accent: #7c9fd4;
+  --reader-code-bg: #252540;
+  --reader-blockquote-border: #4a4a7a;
+  --reader-header-bg: #14142a;
+  --reader-header-border: #2e2e4e;
+  --reader-link: #7c9fd4;
+  --reader-link-visited: #b07cc4;
+}
+
+/* Sepia theme */
+body.reader-active.reader-sepia {
+  --reader-bg: #f4ece2;
+  --reader-text: #3b2a1a;
+  --reader-muted: #7a6050;
+  --reader-border: #d8c8b8;
+  --reader-accent: #8b5e3c;
+  --reader-code-bg: #ede4d8;
+  --reader-blockquote-border: #c8a888;
+  --reader-header-bg: #f8f0e8;
+  --reader-header-border: #d8c8b8;
+  --reader-link: #8b5e3c;
+  --reader-link-visited: #6b3e1c;
+}
+
+/* ── Activation: isolate everything except our reader container ─────────── */
+body.reader-active {
+  background: var(--reader-bg) !important;
+  color: var(--reader-text) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow-x: hidden !important;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+/* Hide everything on the page that isn't our reader UI */
+body.reader-active > *:not(#reader-root):not(#reader-toolbar) {
+  display: none !important;
+}
+
+/* ── Reader toolbar ─────────────────────────────────────────────────────── */
+#reader-toolbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2147483647;
+  background: var(--reader-header-bg);
+  border-bottom: 1px solid var(--reader-header-border);
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--reader-ui-font);
+  font-size: 13px;
+  color: var(--reader-muted);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  transition: background 0.3s, border-color 0.3s;
+}
+
+#reader-toolbar .reader-title-bar {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12px;
+}
+
+.reader-btn {
+  background: none;
+  border: 1px solid var(--reader-border);
+  border-radius: 4px;
+  color: var(--reader-muted);
+  cursor: pointer;
+  font-family: var(--reader-ui-font);
+  font-size: 12px;
+  padding: 4px 8px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.reader-btn:hover {
+  background: var(--reader-border);
+  color: var(--reader-text);
+}
+
+.reader-btn.reader-btn-active {
+  background: var(--reader-accent);
+  border-color: var(--reader-accent);
+  color: #fff;
+}
+
+.reader-font-controls {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.reader-font-size-label {
+  font-size: 11px;
+  color: var(--reader-muted);
+  min-width: 32px;
+  text-align: center;
+}
+
+/* ── Reader root container ─────────────────────────────────────────────── */
+#reader-root {
+  max-width: var(--reader-width);
+  margin: 0 auto;
+  padding: 80px 24px 64px;
+  box-sizing: border-box;
+  background: var(--reader-bg);
+  color: var(--reader-text);
+  min-height: 100vh;
+  transition: background 0.3s, color 0.3s;
+}
+
+/* ── Article header ─────────────────────────────────────────────────────── */
+#reader-root .reader-header {
+  margin-bottom: 2em;
+  padding-bottom: 1.5em;
+  border-bottom: 1px solid var(--reader-border);
+}
+
+#reader-root .reader-headline {
+  font-family: var(--reader-font-family);
+  font-size: calc(var(--reader-font-size) * 1.8);
+  line-height: 1.3;
+  color: var(--reader-text);
+  margin: 0 0 0.5em;
+  font-weight: 700;
+}
+
+#reader-root .reader-byline {
+  font-family: var(--reader-ui-font);
+  font-size: calc(var(--reader-font-size) * 0.8);
+  color: var(--reader-muted);
+  margin: 0 0 0.25em;
+}
+
+#reader-root .reader-date {
+  font-family: var(--reader-ui-font);
+  font-size: calc(var(--reader-font-size) * 0.75);
+  color: var(--reader-muted);
+}
+
+#reader-root .reader-source-link {
+  display: inline-block;
+  margin-top: 0.5em;
+  font-family: var(--reader-ui-font);
+  font-size: calc(var(--reader-font-size) * 0.75);
+  color: var(--reader-link);
+  text-decoration: none;
+}
+#reader-root .reader-source-link:hover { text-decoration: underline; }
+
+/* ── Article body typography ─────────────────────────────────────────────── */
+#reader-root .reader-body {
+  font-family: var(--reader-font-family);
+  font-size: var(--reader-font-size);
+  line-height: var(--reader-line-height);
+  color: var(--reader-text);
+}
+
+#reader-root .reader-body p {
+  margin: 0 0 1.2em;
+}
+
+#reader-root .reader-body h1,
+#reader-root .reader-body h2,
+#reader-root .reader-body h3,
+#reader-root .reader-body h4,
+#reader-root .reader-body h5,
+#reader-root .reader-body h6 {
+  font-family: var(--reader-font-family);
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 1.5em 0 0.5em;
+  color: var(--reader-text);
+}
+
+#reader-root .reader-body h2 { font-size: calc(var(--reader-font-size) * 1.4); }
+#reader-root .reader-body h3 { font-size: calc(var(--reader-font-size) * 1.2); }
+#reader-root .reader-body h4 { font-size: calc(var(--reader-font-size) * 1.05); }
+
+#reader-root .reader-body a {
+  color: var(--reader-link);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+#reader-root .reader-body a:visited { color: var(--reader-link-visited); }
+
+#reader-root .reader-body ul,
+#reader-root .reader-body ol {
+  margin: 0 0 1.2em 1.5em;
+  padding: 0;
+}
+#reader-root .reader-body li { margin-bottom: 0.4em; }
+
+#reader-root .reader-body blockquote {
+  margin: 1.5em 0;
+  padding: 0.75em 1.25em;
+  border-left: 3px solid var(--reader-blockquote-border);
+  color: var(--reader-muted);
+  font-style: italic;
+}
+#reader-root .reader-body blockquote p { margin-bottom: 0; }
+
+#reader-root .reader-body pre {
+  background: var(--reader-code-bg);
+  border: 1px solid var(--reader-border);
+  border-radius: 4px;
+  padding: 1em;
+  overflow-x: auto;
+  font-size: calc(var(--reader-font-size) * 0.85);
+  line-height: 1.5;
+  margin: 1.2em 0;
+}
+
+#reader-root .reader-body code {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: calc(var(--reader-font-size) * 0.85);
+  background: var(--reader-code-bg);
+  border: 1px solid var(--reader-border);
+  border-radius: 3px;
+  padding: 0.1em 0.35em;
+}
+
+#reader-root .reader-body pre code {
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+#reader-root .reader-body hr {
+  border: none;
+  border-top: 1px solid var(--reader-border);
+  margin: 2em 0;
+}
+
+/* ── Images ─────────────────────────────────────────────────────────────── */
+#reader-root .reader-body img,
+#reader-root .reader-body figure img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 1.5em auto;
+  border-radius: 4px;
+}
+
+#reader-root .reader-body figure {
+  margin: 1.5em 0;
+}
+
+#reader-root .reader-body figcaption {
+  font-family: var(--reader-ui-font);
+  font-size: calc(var(--reader-font-size) * 0.75);
+  color: var(--reader-muted);
+  text-align: center;
+  margin-top: 0.5em;
+  font-style: italic;
+}
+
+/* ── Reading progress bar ───────────────────────────────────────────────── */
+#reader-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 2px;
+  background: var(--reader-accent);
+  z-index: 2147483648;
+  transition: width 0.1s linear;
+  width: 0%;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 800px) {
+  #reader-root {
+    padding: 72px 16px 48px;
+  }
+  #reader-root .reader-headline {
+    font-size: calc(var(--reader-font-size) * 1.5);
+  }
+}

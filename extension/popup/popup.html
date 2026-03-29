@@ -9,7 +9,15 @@
     <h1>newsarchive</h1>
     <p class="subtitle">Archive news articles as self-contained snapshots.</p>
 
-    <button id="archive-btn" class="btn">Archive this page</button>
+    <button id="bypass-btn" class="btn btn-accent">Open via archive.is</button>
+    <div id="archive-status-row" class="archive-status-row" style="display:none">
+      <span id="archive-status-text" class="archive-status-text"></span>
+      <button id="local-bypass-btn" class="btn btn-outline btn-sm-inline">Local bypass →</button>
+    </div>
+    <div class="action-row">
+      <button id="reader-btn" class="btn btn-outline">Reader Mode</button>
+      <button id="archive-btn" class="btn btn-secondary">Save snapshot</button>
+    </div>
     <div id="status" class="status"></div>
 
     <hr class="divider">

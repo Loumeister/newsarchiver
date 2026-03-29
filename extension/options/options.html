@@ -76,6 +76,17 @@
       transition: opacity 0.3s;
     }
     .saved.visible { opacity: 1; }
+    .save-btn {
+      background: #7c83ff;
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .save-btn:hover { background: #6a71e0; }
     .disclaimer {
       margin-top: 32px;
       padding: 16px;
@@ -125,6 +136,50 @@
           <span class="toggle-slider"></span>
         </label>
       </div>
+    </div>
+
+    <div class="card">
+      <div class="setting">
+        <div>
+          <div class="setting-label">Auto-bypass on known paywall sites</div>
+          <div class="setting-desc">
+            Automatically apply the paywall bypass when you visit any site in the built-in
+            rules database. The bypass runs ~1.5 s after the page loads. Disable if you
+            experience unexpected layout changes.
+          </div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="auto-bypass">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="setting-label" style="margin-bottom:8px">Custom rules (JSON)</div>
+      <div class="setting-desc" style="margin-bottom:10px">
+        Add your own site rules. Must be a valid JSON array of rule objects. Each rule requires
+        at least <code>domains</code> and <code>removeSelectors</code> arrays.<br>
+        Example: <code>[{"id":"example","domains":["example.com"],"removeSelectors":[".paywall"]}]</code>
+      </div>
+      <textarea
+        id="custom-rules"
+        rows="6"
+        placeholder="[]"
+        style="width:100%;background:#0d1117;color:#c9d1d9;border:1px solid #30363d;border-radius:6px;padding:10px;font-family:monospace;font-size:12px;resize:vertical;box-sizing:border-box"
+      ></textarea>
+      <div id="custom-rules-error" style="color:#f85149;font-size:12px;margin-top:6px;display:none"></div>
+      <button id="save-custom-rules" class="save-btn" style="margin-top:10px">Save custom rules</button>
+    </div>
+
+    <div class="card">
+      <div class="setting-label" style="margin-bottom:6px">Built-in rules</div>
+      <div class="setting-desc" style="margin-bottom:10px">
+        Refresh the in-memory rules cache from the bundled <code>rules.json</code>.
+        Useful after the extension updates.
+      </div>
+      <button id="refresh-rules" class="save-btn">Refresh rules</button>
+      <div id="rules-status" class="saved" style="margin-top:8px"></div>
     </div>
 
     <div class="disclaimer">

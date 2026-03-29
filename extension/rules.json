@@ -1,0 +1,1084 @@
+{
+  "version": "2026.03.29",
+  "rules": [
+    {
+      "id": "nytimes",
+      "name": "The New York Times",
+      "domains": ["nytimes.com"],
+      "removeSelectors": [
+        "#gateway-content",
+        ".css-mcm29e",
+        "[data-testid=\"gateway-container\"]",
+        ".gateway-container",
+        "[class*=\"Overlay--\"]",
+        "[class*=\"paywall\"]"
+      ],
+      "unlockSelectors": [
+        "[data-testid=\"article-body\"]",
+        "[class*=\"StoryBodyCompanionColumn\"]"
+      ],
+      "localStorageClear": [
+        "nyt-et",
+        "nyt-m",
+        "nyt_et",
+        "nyt_m",
+        "nytMeterCount",
+        "nyt-gdp",
+        "nyt-b",
+        "nyt_s3_b",
+        "nyt-s3-b"
+      ],
+      "cookieClear": []
+    },
+    {
+      "id": "wsj",
+      "name": "The Wall Street Journal",
+      "domains": ["wsj.com"],
+      "removeSelectors": [
+        "#cx-snippet-overlay",
+        ".wsj-snippet-login",
+        "[class*=\"SnippetContainer\"]",
+        "[class*=\"paywall-component\"]",
+        "#subscriber-only-warning",
+        ".article-snippet"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-content\"]",
+        ".wsj-snippet-content"
+      ],
+      "localStorageClear": [
+        "cx_guid",
+        "wsj_cx"
+      ],
+      "cookieClear": []
+    },
+    {
+      "id": "washingtonpost",
+      "name": "The Washington Post",
+      "domains": ["washingtonpost.com"],
+      "removeSelectors": [
+        "[data-testid=\"regwall-overlay\"]",
+        "[data-testid=\"metering-overlay\"]",
+        ".paywall",
+        "#paywall-overlay",
+        "[class*=\"paywall-gate\"]",
+        "[class*=\"pb-overlay\"]"
+      ],
+      "unlockSelectors": [
+        "[data-testid=\"article-body\"]",
+        ".article-body"
+      ],
+      "localStorageClear": [
+        "pw_meter",
+        "pw_count",
+        "wapo_meter"
+      ],
+      "cookieClear": []
+    },
+    {
+      "id": "theatlantic",
+      "name": "The Atlantic",
+      "domains": ["theatlantic.com"],
+      "removeSelectors": [
+        "[class*=\"PaywallContainer\"]",
+        "[class*=\"MeterModal\"]",
+        "[class*=\"paywall-backdrop\"]",
+        "[class*=\"SignInPrompt\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-body\"]",
+        "[class*=\"ArticleBody\"]"
+      ],
+      "localStorageClear": [
+        "atlantic_meter",
+        "meter_count"
+      ],
+      "cookieClear": []
+    },
+    {
+      "id": "bloomberg",
+      "name": "Bloomberg",
+      "domains": ["bloomberg.com"],
+      "removeSelectors": [
+        ".paywall-inline",
+        ".fence-body",
+        "[data-module=\"Paywall\"]",
+        ".terminal-paywall",
+        "[class*=\"paywall-fence\"]",
+        "[class*=\"RenderWhenVisible\"] .fence"
+      ],
+      "unlockSelectors": [
+        ".article-body__content",
+        "[class*=\"ArticleBody\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": [],
+      "cssUnlock": ".fence-body { max-height: none !important; overflow: visible !important; } .article-body__content { filter: none !important; }"
+    },
+    {
+      "id": "ft",
+      "name": "Financial Times",
+      "domains": ["ft.com"],
+      "removeSelectors": [
+        "#barrier-app-banner",
+        ".n-messaging-banner",
+        "[class*=\"barrier-view\"]",
+        ".n-barrier",
+        ".o-overlay",
+        "[class*=\"premium-lock\"]"
+      ],
+      "unlockSelectors": [
+        ".article__content-body",
+        "[class*=\"article-body\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": [
+        "FTSession",
+        "FTSession_s"
+      ]
+    },
+    {
+      "id": "economist",
+      "name": "The Economist",
+      "domains": ["economist.com"],
+      "removeSelectors": [
+        "[class*=\"paywall-barrier\"]",
+        "[class*=\"MainContent__PaywallContainer\"]",
+        ".article-barrier",
+        "[class*=\"access-gate\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article__body\"]",
+        "[class*=\"ArticleBody\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "newyorker",
+      "name": "The New Yorker",
+      "domains": ["newyorker.com"],
+      "removeSelectors": [
+        ".paywall-bar",
+        "[class*=\"PaywallDesktop\"]",
+        "[class*=\"MeteringPaywall\"]",
+        "[class*=\"RegGate\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article__body\"]",
+        "[class*=\"ArticleContent\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "vanityfair",
+      "name": "Vanity Fair",
+      "domains": ["vanityfair.com"],
+      "removeSelectors": [
+        ".paywall-bar",
+        "[class*=\"PaywallDesktop\"]",
+        "[class*=\"RegGate\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article__body\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "wired",
+      "name": "Wired",
+      "domains": ["wired.com"],
+      "removeSelectors": [
+        ".paywall-bar",
+        "[class*=\"PaywallDesktop\"]",
+        "[class*=\"RegGate\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article__body\"]",
+        "[class*=\"ArticleBodyWrapper\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "slate",
+      "name": "Slate",
+      "domains": ["slate.com"],
+      "removeSelectors": [
+        ".tp-backdrop",
+        ".tp-modal",
+        "[id*=\"piano\"]",
+        "[class*=\"paywall\"]"
+      ],
+      "unlockSelectors": [
+        ".article__content"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "businessinsider",
+      "name": "Business Insider",
+      "domains": ["businessinsider.com"],
+      "removeSelectors": [
+        ".piano-inline-content",
+        "[class*=\"paywall\"]",
+        ".tp-container-inner",
+        "[id*=\"piano\"]",
+        ".subscription-required"
+      ],
+      "unlockSelectors": [
+        ".content-lock-content",
+        "[class*=\"article-content\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "forbes",
+      "name": "Forbes",
+      "domains": ["forbes.com"],
+      "removeSelectors": [
+        ".paywall-gate",
+        "[class*=\"paywall-overlay\"]",
+        "[class*=\"premium-gate\"]",
+        ".article-paywall"
+      ],
+      "unlockSelectors": [
+        ".article-body-container",
+        "[class*=\"article-body\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "fortune",
+      "name": "Fortune",
+      "domains": ["fortune.com"],
+      "removeSelectors": [
+        "[class*=\"GateContent\"]",
+        "[class*=\"paywall-overlay\"]",
+        ".access-barrier"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-content\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "scientificamerican",
+      "name": "Scientific American",
+      "domains": ["scientificamerican.com"],
+      "removeSelectors": [
+        "[class*=\"PaywallOverlay\"]",
+        ".paywall-container",
+        "[class*=\"RegWall\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-body\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "bostonglobe",
+      "name": "The Boston Globe",
+      "domains": ["bostonglobe.com"],
+      "removeSelectors": [
+        "#mgid_modal",
+        ".tp-backdrop",
+        ".tp-modal",
+        "[id*=\"piano\"]",
+        "#meter_bar",
+        "[class*=\"paywall\"]"
+      ],
+      "unlockSelectors": [
+        ".article-body"
+      ],
+      "localStorageClear": [
+        "bg_meter",
+        "bostonglobe_meter"
+      ],
+      "cookieClear": []
+    },
+    {
+      "id": "latimes",
+      "name": "Los Angeles Times",
+      "domains": ["latimes.com"],
+      "removeSelectors": [
+        ".lat-paywall-overlay",
+        "[class*=\"paywall-container\"]",
+        ".tp-modal",
+        ".tp-backdrop"
+      ],
+      "unlockSelectors": [
+        ".rich-text-article-body",
+        "[class*=\"article-body\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "chicagotribune",
+      "name": "Chicago Tribune",
+      "domains": ["chicagotribune.com"],
+      "removeSelectors": [
+        ".trb_premium-article-paywall",
+        "[class*=\"PaywallCard\"]",
+        ".tp-modal",
+        ".tp-backdrop"
+      ],
+      "unlockSelectors": [
+        ".trb_article_content",
+        "[class*=\"article-content\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "sfchronicle",
+      "name": "San Francisco Chronicle",
+      "domains": ["sfchronicle.com"],
+      "removeSelectors": [
+        "[class*=\"GateContent\"]",
+        "[class*=\"paywall-bar\"]",
+        ".tp-modal",
+        ".tp-backdrop"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-body\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "houstonchronicle",
+      "name": "Houston Chronicle",
+      "domains": ["houstonchronicle.com"],
+      "removeSelectors": [
+        "[class*=\"GateContent\"]",
+        "[class*=\"paywall-bar\"]",
+        ".tp-modal"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-body\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "seattletimes",
+      "name": "The Seattle Times",
+      "domains": ["seattletimes.com"],
+      "removeSelectors": [
+        "[class*=\"paywall\"]",
+        "[class*=\"SubscribeModule\"]",
+        ".subscriber-only-overlay",
+        ".tp-modal"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-content\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "denverpost",
+      "name": "The Denver Post",
+      "domains": ["denverpost.com"],
+      "removeSelectors": [
+        "[class*=\"paywall-article\"]",
+        "[class*=\"paywall-overlay\"]",
+        ".tp-modal"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-content\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "baltimoresun",
+      "name": "Baltimore Sun",
+      "domains": ["baltimoresun.com"],
+      "removeSelectors": [
+        ".trb_premium-article-paywall",
+        ".tp-modal"
+      ],
+      "unlockSelectors": [
+        ".trb_article_content"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "orlandosentinel",
+      "name": "Orlando Sentinel",
+      "domains": ["orlandosentinel.com"],
+      "removeSelectors": [
+        ".trb_premium-article-paywall",
+        ".tp-modal"
+      ],
+      "unlockSelectors": [
+        ".trb_article_content"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "sunsentinel",
+      "name": "Sun Sentinel",
+      "domains": ["sun-sentinel.com"],
+      "removeSelectors": [
+        ".trb_premium-article-paywall",
+        ".tp-modal"
+      ],
+      "unlockSelectors": [
+        ".trb_article_content"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "usatoday",
+      "name": "USA Today",
+      "domains": ["usatoday.com"],
+      "removeSelectors": [
+        ".gnt_ar_b_cta",
+        "[class*=\"subscribe-bar\"]",
+        "[class*=\"paywall\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-body\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "azcentral",
+      "name": "AZCentral",
+      "domains": ["azcentral.com"],
+      "removeSelectors": [
+        ".gigya-login-form",
+        "[class*=\"overlay--complete\"]",
+        "[class*=\"content-locked\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-content\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "freep",
+      "name": "Detroit Free Press",
+      "domains": ["freep.com"],
+      "removeSelectors": [
+        "[class*=\"overlay--complete\"]",
+        "[class*=\"content-locked\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-content\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "northjersey",
+      "name": "NorthJersey.com",
+      "domains": ["northjersey.com"],
+      "removeSelectors": [
+        "[class*=\"overlay--complete\"]",
+        "[class*=\"content-locked\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-content\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "techcrunch",
+      "name": "TechCrunch",
+      "domains": ["techcrunch.com"],
+      "removeSelectors": [
+        "[class*=\"paywall\"]",
+        ".tp-container-inner",
+        ".tp-backdrop"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-content\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "technologyreview",
+      "name": "MIT Technology Review",
+      "domains": ["technologyreview.com"],
+      "removeSelectors": [
+        "[class*=\"PaywallContainer\"]",
+        ".paywall-container",
+        "[class*=\"gate-content\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-body\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "arstechnica",
+      "name": "Ars Technica",
+      "domains": ["arstechnica.com"],
+      "removeSelectors": [
+        "[class*=\"expand-overlay\"]",
+        "[class*=\"article-expander\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-content\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": [],
+      "cssUnlock": ".article-expander { max-height: none !important; }"
+    },
+    {
+      "id": "barrons",
+      "name": "Barron's",
+      "domains": ["barrons.com"],
+      "removeSelectors": [
+        ".cx-snippet",
+        "[class*=\"SnippetContainer\"]",
+        "#cx-snippet-overlay",
+        "[class*=\"paywall-component\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-content\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "marketwatch",
+      "name": "MarketWatch",
+      "domains": ["marketwatch.com"],
+      "removeSelectors": [
+        "[class*=\"paywall\"]",
+        ".tp-modal"
+      ],
+      "unlockSelectors": [
+        ".column--primary",
+        "[class*=\"article-content\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "seekingalpha",
+      "name": "Seeking Alpha",
+      "domains": ["seekingalpha.com"],
+      "removeSelectors": [
+        "[data-test-id=\"paywall-section\"]",
+        "[class*=\"paywall-content\"]",
+        "[class*=\"PaywallBanner\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-content\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "thestreet",
+      "name": "The Street",
+      "domains": ["thestreet.com"],
+      "removeSelectors": [
+        "[class*=\"PaywallOverlay\"]",
+        ".paywall-container",
+        ".tp-modal"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-content\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "telegraph",
+      "name": "The Telegraph",
+      "domains": ["telegraph.co.uk"],
+      "removeSelectors": [
+        ".premium-content-gate",
+        "[class*=\"article-paywall\"]",
+        ".cx-paywall",
+        "[class*=\"registrationwall\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-body\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "spectator",
+      "name": "The Spectator",
+      "domains": ["spectator.co.uk"],
+      "removeSelectors": [
+        "[class*=\"paywall\"]",
+        ".modal-overlay",
+        "[class*=\"register-wall\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-body\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "newstatesman",
+      "name": "New Statesman",
+      "domains": ["newstatesman.com"],
+      "removeSelectors": [
+        "[class*=\"paywall-container\"]",
+        "[class*=\"paywall\"]",
+        ".tp-modal"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-body\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "theguardian",
+      "name": "The Guardian",
+      "domains": ["theguardian.com"],
+      "removeSelectors": [
+        "[class*=\"sign-in-gate\"]",
+        ".js-gate-container",
+        "[class*=\"SignInGate\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-body\"]",
+        ".content__article-body"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "independent",
+      "name": "The Independent",
+      "domains": ["independent.co.uk"],
+      "removeSelectors": [
+        "[class*=\"paywall-bar\"]",
+        "[class*=\"paywall-access\"]",
+        "[class*=\"premium-barrier\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-body\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "sueddeutsche",
+      "name": "Sueddeutsche Zeitung",
+      "domains": ["sueddeutsche.de"],
+      "removeSelectors": [
+        "[class*=\"sz-paywall\"]",
+        "[class*=\"meter-paywall\"]",
+        "[class*=\"paywall\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-body\"]"
+      ],
+      "localStorageClear": [
+        "sz_meter"
+      ],
+      "cookieClear": []
+    },
+    {
+      "id": "zeit",
+      "name": "Die Zeit",
+      "domains": ["zeit.de"],
+      "removeSelectors": [
+        "[class*=\"paragraph-paywall\"]",
+        "[class*=\"z-paywall\"]",
+        "[class*=\"article--paywalled\"] .paywall"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-body\"]",
+        ".article__item"
+      ],
+      "localStorageClear": [],
+      "cookieClear": [],
+      "cssUnlock": ".paragraph-paywall { display: none !important; } .article__item { max-height: none !important; }"
+    },
+    {
+      "id": "spiegel",
+      "name": "Der Spiegel",
+      "domains": ["spiegel.de"],
+      "removeSelectors": [
+        "[class*=\"spiegel-paywall\"]",
+        "[class*=\"paid-content-overlay\"]",
+        "[class*=\"paywall-border\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-body\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "lemonde",
+      "name": "Le Monde",
+      "domains": ["lemonde.fr"],
+      "removeSelectors": [
+        "[class*=\"article__restricted-access\"]",
+        "[class*=\"paywall-banner\"]",
+        "[class*=\"paywall\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article__content\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "lefigaro",
+      "name": "Le Figaro",
+      "domains": ["lefigaro.fr"],
+      "removeSelectors": [
+        "[class*=\"paywall-container\"]",
+        "[class*=\"paywall\"]",
+        ".tp-modal"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-content\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "adnl",
+      "name": "AD.nl",
+      "domains": ["ad.nl"],
+      "removeSelectors": [
+        "[class*=\"paywall\"]",
+        ".plus-indicator",
+        "[class*=\"article--paid\"] [class*=\"paywall\"]",
+        "[class*=\"premium-barrier\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-content\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "volkskrant",
+      "name": "De Volkskrant",
+      "domains": ["volkskrant.nl"],
+      "removeSelectors": [
+        "[class*=\"paywall-block\"]",
+        "[class*=\"premium-locked\"]",
+        "[class*=\"paywall\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-content\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "nrc",
+      "name": "NRC",
+      "domains": ["nrc.nl"],
+      "removeSelectors": [
+        "[class*=\"paywall-container\"]",
+        "[class*=\"paywall\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-content\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "trouw",
+      "name": "Trouw",
+      "domains": ["trouw.nl"],
+      "removeSelectors": [
+        "[class*=\"paywall-container\"]",
+        "[class*=\"premium-content\"] [class*=\"gate\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-content\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "parool",
+      "name": "Het Parool",
+      "domains": ["parool.nl"],
+      "removeSelectors": [
+        "[class*=\"paywall-container\"]",
+        "[class*=\"premium-content\"] [class*=\"gate\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-content\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "haaretz",
+      "name": "Haaretz",
+      "domains": ["haaretz.com"],
+      "removeSelectors": [
+        "[class*=\"premium-marker\"] [class*=\"paywall\"]",
+        "[class*=\"htzPremium\"] [class*=\"paywall\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-body\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "elpais",
+      "name": "El Pais",
+      "domains": ["elpais.com"],
+      "removeSelectors": [
+        "[class*=\"paywall\"]",
+        "[class*=\"premium-gate\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-body\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "medium",
+      "name": "Medium",
+      "domains": ["medium.com"],
+      "removeSelectors": [
+        "[class*=\"meteredContent\"]",
+        "[class*=\"branch-journeys-top\"]",
+        "[class*=\"overlay\"]",
+        "[class*=\"upsell\"]"
+      ],
+      "unlockSelectors": [
+        "article",
+        "[class*=\"section-content\"]"
+      ],
+      "localStorageClear": [
+        "mediumMetered",
+        "already_upgraded"
+      ],
+      "cookieClear": []
+    },
+    {
+      "id": "theathletic",
+      "name": "The Athletic",
+      "domains": ["theathletic.com"],
+      "removeSelectors": [
+        "[class*=\"PaywallModal\"]",
+        "[class*=\"paywall-container\"]",
+        ".tp-container-inner",
+        ".tp-backdrop",
+        "[class*=\"RegWall\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-body\"]",
+        "[class*=\"ArticleBody\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "thetimes",
+      "name": "The Times",
+      "domains": ["thetimes.co.uk"],
+      "removeSelectors": [
+        "[data-component=\"Paywall\"]",
+        "[class*=\"PaywallComponent\"]",
+        ".paywall",
+        "[class*=\"inline-paywall\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"Article-content\"]",
+        "[class*=\"article-body\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "nydailynews",
+      "name": "New York Daily News",
+      "domains": ["nydailynews.com"],
+      "removeSelectors": [
+        ".tp-modal",
+        ".tp-backdrop",
+        "[id*=\"piano\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-body\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "nypost",
+      "name": "New York Post",
+      "domains": ["nypost.com"],
+      "removeSelectors": [
+        "[class*=\"paywall-overlay\"]",
+        ".tp-modal"
+      ],
+      "unlockSelectors": [
+        "[class*=\"entry-content\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "newsweek",
+      "name": "Newsweek",
+      "domains": ["newsweek.com"],
+      "removeSelectors": [
+        "[class*=\"paywall-modal\"]",
+        ".paywall",
+        "[class*=\"gate-overlay\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-body\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "time",
+      "name": "Time",
+      "domains": ["time.com"],
+      "removeSelectors": [
+        ".tp-modal",
+        ".tp-backdrop",
+        "[class*=\"paywall\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-body\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "thedailybeast",
+      "name": "The Daily Beast",
+      "domains": ["thedailybeast.com"],
+      "removeSelectors": [
+        "[class*=\"paywall\"]",
+        ".tp-modal"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-body\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "foreignpolicy",
+      "name": "Foreign Policy",
+      "domains": ["foreignpolicy.com"],
+      "removeSelectors": [
+        "[class*=\"paywall\"]",
+        "[class*=\"subscribe-gate\"]",
+        ".tp-modal"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-content\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "foreignaffairs",
+      "name": "Foreign Affairs",
+      "domains": ["foreignaffairs.com"],
+      "removeSelectors": [
+        "[class*=\"paywall-container\"]",
+        "[class*=\"paywall\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-content\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "hbr",
+      "name": "Harvard Business Review",
+      "domains": ["hbr.org"],
+      "removeSelectors": [
+        "[class*=\"paywall\"]",
+        "[class*=\"signin-prompt\"]",
+        "[class*=\"subscription-prompt\"]"
+      ],
+      "unlockSelectors": [
+        "[class*=\"article-content\"]"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    },
+    {
+      "id": "generic",
+      "name": "Generic Paywall Rules",
+      "domains": [],
+      "removeSelectors": [
+        ".paywall",
+        "#paywall",
+        "[id*=\"paywall\"]",
+        "[class*=\"paywall-modal\"]",
+        "[class*=\"paywall-container\"]",
+        "[class*=\"paywall-overlay\"]",
+        "[class*=\"paywall-gate\"]",
+        ".tp-modal",
+        ".tp-backdrop",
+        "#tp-container",
+        ".tp-container-inner",
+        "[id*=\"piano\"]",
+        "[class*=\"piano-id\"]",
+        "[class*=\"tp-modal\"]",
+        "[class*=\"subscribe-wall\"]",
+        "[class*=\"subscription-wall\"]",
+        "[class*=\"meter-paywall\"]",
+        "[class*=\"registration-wall\"]",
+        "[class*=\"regwall\"]",
+        "[class*=\"sign-in-gate\"]",
+        "[class*=\"login-gate\"]",
+        "[class*=\"access-gate\"]",
+        "[class*=\"content-gate\"]",
+        "[class*=\"article-gate\"]",
+        ".modal-paywall",
+        "[class*=\"paywalled\"]"
+      ],
+      "unlockSelectors": [
+        "article",
+        "[role=\"article\"]",
+        "[class*=\"article-body\"]",
+        "[class*=\"story-body\"]",
+        "[class*=\"post-content\"]",
+        "[class*=\"entry-content\"]",
+        "[class*=\"content-body\"]",
+        "main"
+      ],
+      "localStorageClear": [],
+      "cookieClear": []
+    }
+  ]
+}

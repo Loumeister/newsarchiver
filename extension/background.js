@@ -60,7 +60,7 @@ const DNR_RULE_ID = 1;
  */
 async function getSettings() {
   return new Promise(resolve => {
-    chrome.storage.sync.get({ keepScripts: false, googlebotMode: true }, resolve);
+    chrome.storage.sync.get({ keepScripts: false, googlebotMode: true, openInNewTab: true }, resolve);
   });
 }
 
@@ -327,6 +327,69 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // Keep message channel open for async response
   }
 
+  if (message.action === 'bypass') {
+    // Primary path: open archive.is snapshot; local DOM is fallback only
+    handleBypassViaArchive(message.tabId)
+      .then(result => sendResponse({ success: true, ...result }))
+      .catch(err => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+
+  if (message.action === 'bypassLocal') {
+    // Explicit local DOM bypass (user-initiated fallback or programmatic fallback)
+    handleBypass(message.tabId)
+      .then(() => sendResponse({ success: true }))
+      .catch(err => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+
+  if (message.action === 'archiveResult' && sender.tab) {
+    // archive-detector.js reports whether the snapshot was good
+    const entry = _archiveTabs.get(sender.tab.id);
+    if (entry && !entry.resolved) {
+      entry.resolved = true;
+      _archiveTabs.delete(sender.tab.id);
+      clearTimeout(entry.fallbackTimer);
+      if (!message.success) {
+        console.log('[bypass] archive.is failed (', message.reason, '), triggering local DOM bypass');
+        handleBypass(entry.originalTabId).catch(() => {});
+      }
+    }
+    sendResponse({ received: true });
+    return true;
+  }
+
+  if (message.action === 'requestFallback' && sender.tab) {
+    // User clicked the "Try local bypass" button injected by archive-detector.js
+    const entry = _archiveTabs.get(sender.tab.id);
+    if (entry && !entry.resolved) {
+      entry.resolved = true;
+      _archiveTabs.delete(sender.tab.id);
+      clearTimeout(entry.fallbackTimer);
+      handleBypass(entry.originalTabId).catch(() => {});
+      // Switch focus back to the original tab so the user sees the bypass happen
+      chrome.tabs.update(entry.originalTabId, { active: true }).catch(() => {});
+    }
+    sendResponse({ received: true });
+    return true;
+  }
+
+  if (message.action === 'getRulesForDomain') {
+    // Content script requesting site-specific rules
+    getRulesForDomain(message.domain)
+      .then(rule => sendResponse({ rule }))
+      .catch(() => sendResponse({ rule: null }));
+    return true;
+  }
+
+  if (message.action === 'refreshRulesCache') {
+    // Bust the in-memory rules cache so it reloads from rules.json on next request
+    _rulesCache = null;
+    _paywallDomains = null;
+    loadRules().then(() => sendResponse({ success: true })).catch(() => sendResponse({ success: false }));
+    return true;
+  }
+
   if (message.action === 'pageCaptured' && sender.tab) {
     // Content script finished capturing
     const pending = pendingCaptures.get(sender.tab.id);
@@ -335,6 +398,247 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       pending.resolve(message.data);
     }
   }
+});
+
+// ── Paywall bypass helpers ───────────────────────────────────────────────
+
+/** Cached rules from rules.json, loaded once per service worker lifetime. */
+let _rulesCache = null;
+
+/**
+ * Load and cache rules.json from the extension package.
+ * @returns {Promise<Array>}
+ */
+async function loadRules() {
+  if (_rulesCache) return _rulesCache;
+  try {
+    const url = chrome.runtime.getURL('rules.json');
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`rules.json fetch failed: ${res.status}`);
+    const data = await res.json();
+    _rulesCache = data.rules || [];
+  } catch (err) {
+    console.warn('[bypass] Could not load rules.json:', err.message);
+    _rulesCache = [];
+  }
+  return _rulesCache;
+}
+
+/**
+ * Find the most specific rule matching a hostname.
+ * Falls back to the generic rule (domains: []) if no exact match.
+ * @param {string} domain - e.g. "www.nytimes.com"
+ * @returns {Promise<object|null>}
+ */
+async function getRulesForDomain(domain) {
+  const rules = await loadRules();
+  const hostname = domain.replace(/^www\./, '');
+  // Exact or subdomain match
+  const specific = rules.find(r =>
+    Array.isArray(r.domains) &&
+    r.domains.some(d => hostname === d || hostname.endsWith('.' + d))
+  );
+  if (specific) return specific;
+  // Fall back to generic rule
+  return rules.find(r => Array.isArray(r.domains) && r.domains.length === 0) || null;
+}
+
+/**
+ * Inject bypass content script into tab without archiving (local DOM engine).
+ * This is the fallback — called when archive.is fails or times out.
+ * @param {number} tabId
+ */
+async function handleBypass(tabId) {
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    files: ['content.js'],
+  });
+}
+
+// ── archive.is primary engine ─────────────────────────────────────────────
+
+/**
+ * Ordered list of archive.is mirrors to try (March 2026).
+ * Cycled in order; first reachable mirror wins.
+ */
+const ARCHIVE_MIRRORS = [
+  'https://archive.today',
+  'https://archive.ph',
+  'https://archive.is',
+  'https://archive.fo',
+  'https://archive.li',
+  'https://archive.md',
+  'https://archive.vn',
+];
+
+/**
+ * Map of archive tab IDs → { originalUrl, originalTabId, resolved, fallbackTimer }
+ * Used to track which archive.is tabs we opened so we can react to their outcome.
+ */
+const _archiveTabs = new Map();
+
+/**
+ * Try each mirror with a HEAD request and return the first reachable one.
+ * Falls back to the first mirror if all fail (network may allow the tab to
+ * load even if our service-worker fetch is blocked).
+ * @returns {Promise<string>}
+ */
+async function pickWorkingMirror() {
+  for (const mirror of ARCHIVE_MIRRORS) {
+    try {
+      const res = await fetch(`${mirror}/`, {
+        method: 'HEAD',
+        signal: AbortSignal.timeout(4000),
+      });
+      // Any HTTP response (including redirects) means the host is reachable
+      if (res.status < 500) return mirror;
+    } catch { /* unreachable — try next */ }
+  }
+  return ARCHIVE_MIRRORS[0]; // best-effort default
+}
+
+/**
+ * Primary bypass handler.
+ * Opens the archive.is snapshot for the given tab's URL.
+ * Injects archive-detector.js once the archive tab loads.
+ * Automatically triggers handleBypass() after 30 s if the detector
+ * hasn't reported success.
+ *
+ * @param {number} tabId - The tab containing the paywalled article
+ * @returns {Promise<{ archiveUrl: string, archiveTabId: number }>}
+ */
+async function handleBypassViaArchive(tabId) {
+  const settings = await getSettings();
+  const tab = await chrome.tabs.get(tabId);
+  const originalUrl = tab.url;
+
+  const mirror = await pickWorkingMirror();
+  // ?run=1 asks archive.is to create a fresh snapshot if none exists
+  const archiveUrl = `${mirror}/newest/${originalUrl}`;
+
+  let archiveTab;
+  if (settings.openInNewTab !== false) {
+    archiveTab = await chrome.tabs.create({ url: archiveUrl, index: tab.index + 1 });
+  } else {
+    archiveTab = await chrome.tabs.update(tabId, { url: archiveUrl });
+  }
+
+  // 30-second hard fallback: if archive-detector.js never reports back
+  const fallbackTimer = setTimeout(async () => {
+    const entry = _archiveTabs.get(archiveTab.id);
+    if (entry && !entry.resolved) {
+      entry.resolved = true;
+      _archiveTabs.delete(archiveTab.id);
+      console.log('[bypass] archive.is 30 s timeout — triggering local DOM bypass');
+      await handleBypass(entry.originalTabId).catch(() => {});
+    }
+  }, 30000);
+
+  _archiveTabs.set(archiveTab.id, {
+    originalUrl,
+    originalTabId: tabId,
+    mirror,
+    resolved: false,
+    fallbackTimer,
+  });
+
+  return { archiveUrl, archiveTabId: archiveTab.id };
+}
+
+// ── Context menu ─────────────────────────────────────────────────────────
+
+chrome.runtime.onInstalled.addListener(() => {
+  // Remove any pre-existing item to avoid duplicate errors on reload
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: 'bypass-paywall',
+      title: 'Bypass Paywall',
+      contexts: ['page'],
+    });
+  });
+});
+
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === 'bypass-paywall' && tab) {
+    // Primary: archive.is. Falls back to local DOM automatically if it fails.
+    handleBypassViaArchive(tab.id).catch(err => {
+      console.warn('[bypass] Context menu archive.is failed, trying local DOM:', err.message);
+      handleBypass(tab.id).catch(() => {});
+    });
+  }
+});
+
+// ── Auto-bypass on page load ──────────────────────────────────────────────
+
+/**
+ * Get user settings including the autoBypass flag.
+ */
+async function getAutoBypassSetting() {
+  return new Promise(resolve => {
+    chrome.storage.sync.get({ autoBypass: false }, resolve);
+  });
+}
+
+/** Known paywall domain set — loaded lazily from rules.json. */
+let _paywallDomains = null;
+
+async function getPaywallDomains() {
+  if (_paywallDomains) return _paywallDomains;
+  const rules = await loadRules();
+  _paywallDomains = new Set(
+    rules.flatMap(r => (r.domains && r.domains.length > 0 ? r.domains : []))
+  );
+  return _paywallDomains;
+}
+
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (changeInfo.status !== 'complete' || !tab.url) return;
+  if (!tab.url.startsWith('http')) return;
+
+  // ── Inject archive-detector.js on tabs we opened via handleBypassViaArchive ──
+  if (_archiveTabs.has(tabId)) {
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ['archive-detector.js'],
+      });
+    } catch (err) {
+      // The tab may have navigated away or be on a restricted URL
+      console.warn('[bypass] Could not inject archive-detector.js:', err.message);
+      // Treat as failure — trigger local fallback
+      const entry = _archiveTabs.get(tabId);
+      if (entry && !entry.resolved) {
+        entry.resolved = true;
+        _archiveTabs.delete(tabId);
+        clearTimeout(entry.fallbackTimer);
+        handleBypass(entry.originalTabId).catch(() => {});
+      }
+    }
+    return; // Don't run auto-bypass logic on archive.* tabs
+  }
+
+  // ── Auto-bypass on known paywall domains ─────────────────────────────────
+  const { autoBypass } = await getAutoBypassSetting();
+  if (!autoBypass) return;
+
+  let hostname;
+  try {
+    hostname = new URL(tab.url).hostname.replace(/^www\./, '');
+  } catch {
+    return;
+  }
+
+  const domains = await getPaywallDomains();
+  if (!domains.has(hostname)) return;
+
+  // Small delay to let the page finish rendering before bypass
+  setTimeout(() => {
+    // Auto-bypass goes through archive.is too, so the user always gets the
+    // cleanest possible version of the article.
+    handleBypassViaArchive(tabId).catch(err =>
+      console.warn('[bypass] Auto-bypass failed on', hostname, err.message)
+    );
+  }, 1500);
 });
 
 /**

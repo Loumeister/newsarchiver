@@ -1,8 +1,13 @@
 import { listSnapshots, deleteSnapshot, getSnapshot } from '../lib/storage.js';
 
-const archiveBtn = document.getElementById('archive-btn');
-const statusEl = document.getElementById('status');
-const snapshotList = document.getElementById('snapshot-list');
+const archiveBtn      = document.getElementById('archive-btn');
+const bypassBtn       = document.getElementById('bypass-btn');
+const readerBtn       = document.getElementById('reader-btn');
+const localBypassBtn  = document.getElementById('local-bypass-btn');
+const archiveStatusRow  = document.getElementById('archive-status-row');
+const archiveStatusText = document.getElementById('archive-status-text');
+const statusEl        = document.getElementById('status');
+const snapshotList    = document.getElementById('snapshot-list');
 
 // Open options page
 document.getElementById('options-link').addEventListener('click', (e) => {
@@ -10,7 +15,74 @@ document.getElementById('options-link').addEventListener('click', (e) => {
   chrome.runtime.openOptionsPage();
 });
 
-// Archive button
+// ── Primary: "Open via archive.is" ───────────────────────────────────────
+// Sends the `bypass` action which now routes through archive.is first.
+// The background will auto-fallback after 30 s; the user also gets a
+// one-click "Local bypass" button right in the popup.
+bypassBtn.addEventListener('click', async () => {
+  bypassBtn.disabled = true;
+  showStatus('Opening archive.is snapshot…', 'info');
+  archiveStatusRow.style.display = 'none';
+
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab) throw new Error('No active tab found');
+
+    const response = await chrome.runtime.sendMessage({ action: 'bypass', tabId: tab.id });
+
+    if (response && response.success) {
+      showStatus('', '');  // clear status — snapshot tab is now open
+      // Show the status row with mirror info + one-click local fallback
+      archiveStatusText.textContent =
+        `archive.is snapshot opened. Auto-fallback in 30 s if needed.`;
+      archiveStatusRow.style.display = 'flex';
+      // Store tab ID for the local-bypass button
+      localBypassBtn.dataset.tabId = String(tab.id);
+    } else {
+      showStatus(`Error: ${response && response.error ? response.error : 'Unknown error'}`, 'error');
+    }
+  } catch (err) {
+    showStatus(`Error: ${err.message}`, 'error');
+  } finally {
+    bypassBtn.disabled = false;
+  }
+});
+
+// ── One-click local fallback (visible after archive.is opens) ────────────
+localBypassBtn.addEventListener('click', async () => {
+  localBypassBtn.disabled = true;
+  archiveStatusText.textContent = 'Applying local DOM bypass…';
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab) throw new Error('No active tab found');
+    const tabId = parseInt(localBypassBtn.dataset.tabId || tab.id, 10);
+    await chrome.runtime.sendMessage({ action: 'bypassLocal', tabId });
+    archiveStatusText.textContent = 'Local bypass applied.';
+  } catch (err) {
+    archiveStatusText.textContent = `Error: ${err.message}`;
+  } finally {
+    localBypassBtn.disabled = false;
+  }
+});
+
+// ── Reader Mode ───────────────────────────────────────────────────────────
+readerBtn.addEventListener('click', async () => {
+  readerBtn.disabled = true;
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab) throw new Error('No active tab found');
+    // Apply local DOM bypass first, then activate reader mode on the same tab
+    await chrome.runtime.sendMessage({ action: 'bypassLocal', tabId: tab.id });
+    await chrome.tabs.sendMessage(tab.id, { action: 'activateReader' });
+    showStatus('Reader mode activated.', 'success');
+  } catch (err) {
+    showStatus(`Error: ${err.message}`, 'error');
+  } finally {
+    readerBtn.disabled = false;
+  }
+});
+
+// ── Save Snapshot ─────────────────────────────────────────────────────────
 archiveBtn.addEventListener('click', async () => {
   archiveBtn.disabled = true;
   showStatus('Archiving... this may take 15-30 seconds.', 'info');

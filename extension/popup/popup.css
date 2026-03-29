@@ -65,6 +65,84 @@ h1 {
   background: #b62324;
 }
 
+/* Action row for bypass + reader buttons */
+.action-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.action-row .btn {
+  flex: 1;
+  font-size: 13px;
+  padding: 9px 8px;
+}
+
+/* Accent button — primary paywall bypass action */
+.btn-accent {
+  background: #f97316;
+}
+
+.btn-accent:hover {
+  background: #ea6c0e;
+}
+
+/* Outline button — secondary action */
+.btn-outline {
+  background: transparent;
+  border: 1px solid #30363d;
+  color: #c9d1d9;
+}
+
+.btn-outline:hover {
+  background: #21262d;
+}
+
+/* Secondary button — less prominent than accent */
+.btn-secondary {
+  background: #7c83ff;
+}
+
+.btn-secondary:hover {
+  background: #6a71e0;
+}
+
+/* Archive.is status row — shown after bypass is triggered */
+.archive-status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 4px;
+  padding: 6px 10px;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  font-size: 11px;
+}
+
+.archive-status-text {
+  flex: 1;
+  color: #8b949e;
+  line-height: 1.4;
+}
+
+/* Inline small button (sits inside the status row) */
+.btn-sm-inline {
+  flex-shrink: 0;
+  padding: 4px 8px;
+  font-size: 11px;
+  border-radius: 4px;
+  width: auto;
+  border: 1px solid #f97316;
+  color: #f97316;
+  background: transparent;
+}
+
+.btn-sm-inline:hover {
+  background: #f97316;
+  color: #fff;
+}
+
 .status {
   margin-top: 8px;
   padding: 8px 12px;
