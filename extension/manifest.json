@@ -10,10 +10,17 @@
     "downloads",
     "tabs",
     "offscreen",
+    "contextMenus",
     "declarativeNetRequest"
   ],
   "host_permissions": [
     "<all_urls>"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["rules.json", "reader.css"],
+      "matches": ["<all_urls>"]
+    }
   ],
   "background": {
     "service_worker": "background.js",

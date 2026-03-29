@@ -327,6 +327,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // Keep message channel open for async response
   }
 
+  if (message.action === 'bypass') {
+    // Bypass-only: inject DOM manipulation without archiving
+    handleBypass(message.tabId)
+      .then(() => sendResponse({ success: true }))
+      .catch(err => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+
+  if (message.action === 'getRulesForDomain') {
+    // Content script requesting site-specific rules
+    getRulesForDomain(message.domain)
+      .then(rule => sendResponse({ rule }))
+      .catch(() => sendResponse({ rule: null }));
+    return true;
+  }
+
+  if (message.action === 'refreshRulesCache') {
+    // Bust the in-memory rules cache so it reloads from rules.json on next request
+    _rulesCache = null;
+    _paywallDomains = null;
+    loadRules().then(() => sendResponse({ success: true })).catch(() => sendResponse({ success: false }));
+    return true;
+  }
+
   if (message.action === 'pageCaptured' && sender.tab) {
     // Content script finished capturing
     const pending = pendingCaptures.get(sender.tab.id);
@@ -335,6 +359,130 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       pending.resolve(message.data);
     }
   }
+});
+
+// ── Paywall bypass helpers ───────────────────────────────────────────────
+
+/** Cached rules from rules.json, loaded once per service worker lifetime. */
+let _rulesCache = null;
+
+/**
+ * Load and cache rules.json from the extension package.
+ * @returns {Promise<Array>}
+ */
+async function loadRules() {
+  if (_rulesCache) return _rulesCache;
+  try {
+    const url = chrome.runtime.getURL('rules.json');
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`rules.json fetch failed: ${res.status}`);
+    const data = await res.json();
+    _rulesCache = data.rules || [];
+  } catch (err) {
+    console.warn('[bypass] Could not load rules.json:', err.message);
+    _rulesCache = [];
+  }
+  return _rulesCache;
+}
+
+/**
+ * Find the most specific rule matching a hostname.
+ * Falls back to the generic rule (domains: []) if no exact match.
+ * @param {string} domain - e.g. "www.nytimes.com"
+ * @returns {Promise<object|null>}
+ */
+async function getRulesForDomain(domain) {
+  const rules = await loadRules();
+  const hostname = domain.replace(/^www\./, '');
+  // Exact or subdomain match
+  const specific = rules.find(r =>
+    Array.isArray(r.domains) &&
+    r.domains.some(d => hostname === d || hostname.endsWith('.' + d))
+  );
+  if (specific) return specific;
+  // Fall back to generic rule
+  return rules.find(r => Array.isArray(r.domains) && r.domains.length === 0) || null;
+}
+
+/**
+ * Inject bypass content script into tab without archiving.
+ * @param {number} tabId
+ */
+async function handleBypass(tabId) {
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    files: ['content.js'],
+  });
+}
+
+// ── Context menu ─────────────────────────────────────────────────────────
+
+chrome.runtime.onInstalled.addListener(() => {
+  // Remove any pre-existing item to avoid duplicate errors on reload
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: 'bypass-paywall',
+      title: 'Bypass Paywall',
+      contexts: ['page'],
+    });
+  });
+});
+
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === 'bypass-paywall' && tab) {
+    handleBypass(tab.id).catch(err =>
+      console.warn('[bypass] Context menu bypass failed:', err.message)
+    );
+  }
+});
+
+// ── Auto-bypass on page load ──────────────────────────────────────────────
+
+/**
+ * Get user settings including the autoBypass flag.
+ */
+async function getAutoBypassSetting() {
+  return new Promise(resolve => {
+    chrome.storage.sync.get({ autoBypass: false }, resolve);
+  });
+}
+
+/** Known paywall domain set — loaded lazily from rules.json. */
+let _paywallDomains = null;
+
+async function getPaywallDomains() {
+  if (_paywallDomains) return _paywallDomains;
+  const rules = await loadRules();
+  _paywallDomains = new Set(
+    rules.flatMap(r => (r.domains && r.domains.length > 0 ? r.domains : []))
+  );
+  return _paywallDomains;
+}
+
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (changeInfo.status !== 'complete' || !tab.url) return;
+  // Only run on http/https pages
+  if (!tab.url.startsWith('http')) return;
+
+  const { autoBypass } = await getAutoBypassSetting();
+  if (!autoBypass) return;
+
+  let hostname;
+  try {
+    hostname = new URL(tab.url).hostname.replace(/^www\./, '');
+  } catch {
+    return;
+  }
+
+  const domains = await getPaywallDomains();
+  if (!domains.has(hostname)) return;
+
+  // Small delay to let the page finish rendering before bypass
+  setTimeout(() => {
+    handleBypass(tabId).catch(err =>
+      console.warn('[bypass] Auto-bypass failed on', hostname, err.message)
+    );
+  }, 1500);
 });
 
 /**

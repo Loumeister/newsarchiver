@@ -65,6 +65,48 @@ h1 {
   background: #b62324;
 }
 
+/* Action row for bypass + reader buttons */
+.action-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.action-row .btn {
+  flex: 1;
+  font-size: 13px;
+  padding: 9px 8px;
+}
+
+/* Accent button — primary paywall bypass action */
+.btn-accent {
+  background: #f97316;
+}
+
+.btn-accent:hover {
+  background: #ea6c0e;
+}
+
+/* Outline button — secondary action */
+.btn-outline {
+  background: transparent;
+  border: 1px solid #30363d;
+  color: #c9d1d9;
+}
+
+.btn-outline:hover {
+  background: #21262d;
+}
+
+/* Secondary button — less prominent than accent */
+.btn-secondary {
+  background: #7c83ff;
+}
+
+.btn-secondary:hover {
+  background: #6a71e0;
+}
+
 .status {
   margin-top: 8px;
   padding: 8px 12px;

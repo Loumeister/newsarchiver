@@ -1,6 +1,8 @@
 import { listSnapshots, deleteSnapshot, getSnapshot } from '../lib/storage.js';
 
 const archiveBtn = document.getElementById('archive-btn');
+const bypassBtn = document.getElementById('bypass-btn');
+const readerBtn = document.getElementById('reader-btn');
 const statusEl = document.getElementById('status');
 const snapshotList = document.getElementById('snapshot-list');
 
@@ -8,6 +10,43 @@ const snapshotList = document.getElementById('snapshot-list');
 document.getElementById('options-link').addEventListener('click', (e) => {
   e.preventDefault();
   chrome.runtime.openOptionsPage();
+});
+
+// Bypass Paywall button — inject DOM bypass without archiving
+bypassBtn.addEventListener('click', async () => {
+  bypassBtn.disabled = true;
+  showStatus('Bypassing paywall...', 'info');
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab) throw new Error('No active tab found');
+    const response = await chrome.runtime.sendMessage({ action: 'bypass', tabId: tab.id });
+    if (response && response.success) {
+      showStatus('Paywall bypass applied.', 'success');
+    } else {
+      showStatus(`Error: ${response && response.error ? response.error : 'Unknown error'}`, 'error');
+    }
+  } catch (err) {
+    showStatus(`Error: ${err.message}`, 'error');
+  } finally {
+    bypassBtn.disabled = false;
+  }
+});
+
+// Reader Mode button — activate clean reading view in the current tab
+readerBtn.addEventListener('click', async () => {
+  readerBtn.disabled = true;
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab) throw new Error('No active tab found');
+    // First bypass the paywall, then activate reader mode
+    await chrome.runtime.sendMessage({ action: 'bypass', tabId: tab.id });
+    await chrome.tabs.sendMessage(tab.id, { action: 'activateReader' });
+    showStatus('Reader mode activated.', 'success');
+  } catch (err) {
+    showStatus(`Error: ${err.message}`, 'error');
+  } finally {
+    readerBtn.disabled = false;
+  }
 });
 
 // Archive button
