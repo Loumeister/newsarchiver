@@ -60,7 +60,7 @@ const DNR_RULE_ID = 1;
  */
 async function getSettings() {
   return new Promise(resolve => {
-    chrome.storage.sync.get({ keepScripts: false, googlebotMode: true }, resolve);
+    chrome.storage.sync.get({ keepScripts: false, googlebotMode: true, openInNewTab: true }, resolve);
   });
 }
 
@@ -328,10 +328,49 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.action === 'bypass') {
-    // Bypass-only: inject DOM manipulation without archiving
+    // Primary path: open archive.is snapshot; local DOM is fallback only
+    handleBypassViaArchive(message.tabId)
+      .then(result => sendResponse({ success: true, ...result }))
+      .catch(err => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+
+  if (message.action === 'bypassLocal') {
+    // Explicit local DOM bypass (user-initiated fallback or programmatic fallback)
     handleBypass(message.tabId)
       .then(() => sendResponse({ success: true }))
       .catch(err => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+
+  if (message.action === 'archiveResult' && sender.tab) {
+    // archive-detector.js reports whether the snapshot was good
+    const entry = _archiveTabs.get(sender.tab.id);
+    if (entry && !entry.resolved) {
+      entry.resolved = true;
+      _archiveTabs.delete(sender.tab.id);
+      clearTimeout(entry.fallbackTimer);
+      if (!message.success) {
+        console.log('[bypass] archive.is failed (', message.reason, '), triggering local DOM bypass');
+        handleBypass(entry.originalTabId).catch(() => {});
+      }
+    }
+    sendResponse({ received: true });
+    return true;
+  }
+
+  if (message.action === 'requestFallback' && sender.tab) {
+    // User clicked the "Try local bypass" button injected by archive-detector.js
+    const entry = _archiveTabs.get(sender.tab.id);
+    if (entry && !entry.resolved) {
+      entry.resolved = true;
+      _archiveTabs.delete(sender.tab.id);
+      clearTimeout(entry.fallbackTimer);
+      handleBypass(entry.originalTabId).catch(() => {});
+      // Switch focus back to the original tab so the user sees the bypass happen
+      chrome.tabs.update(entry.originalTabId, { active: true }).catch(() => {});
+    }
+    sendResponse({ received: true });
     return true;
   }
 
@@ -405,7 +444,8 @@ async function getRulesForDomain(domain) {
 }
 
 /**
- * Inject bypass content script into tab without archiving.
+ * Inject bypass content script into tab without archiving (local DOM engine).
+ * This is the fallback — called when archive.is fails or times out.
  * @param {number} tabId
  */
 async function handleBypass(tabId) {
@@ -413,6 +453,96 @@ async function handleBypass(tabId) {
     target: { tabId },
     files: ['content.js'],
   });
+}
+
+// ── archive.is primary engine ─────────────────────────────────────────────
+
+/**
+ * Ordered list of archive.is mirrors to try (March 2026).
+ * Cycled in order; first reachable mirror wins.
+ */
+const ARCHIVE_MIRRORS = [
+  'https://archive.today',
+  'https://archive.ph',
+  'https://archive.is',
+  'https://archive.fo',
+  'https://archive.li',
+  'https://archive.md',
+  'https://archive.vn',
+];
+
+/**
+ * Map of archive tab IDs → { originalUrl, originalTabId, resolved, fallbackTimer }
+ * Used to track which archive.is tabs we opened so we can react to their outcome.
+ */
+const _archiveTabs = new Map();
+
+/**
+ * Try each mirror with a HEAD request and return the first reachable one.
+ * Falls back to the first mirror if all fail (network may allow the tab to
+ * load even if our service-worker fetch is blocked).
+ * @returns {Promise<string>}
+ */
+async function pickWorkingMirror() {
+  for (const mirror of ARCHIVE_MIRRORS) {
+    try {
+      const res = await fetch(`${mirror}/`, {
+        method: 'HEAD',
+        signal: AbortSignal.timeout(4000),
+      });
+      // Any HTTP response (including redirects) means the host is reachable
+      if (res.status < 500) return mirror;
+    } catch { /* unreachable — try next */ }
+  }
+  return ARCHIVE_MIRRORS[0]; // best-effort default
+}
+
+/**
+ * Primary bypass handler.
+ * Opens the archive.is snapshot for the given tab's URL.
+ * Injects archive-detector.js once the archive tab loads.
+ * Automatically triggers handleBypass() after 30 s if the detector
+ * hasn't reported success.
+ *
+ * @param {number} tabId - The tab containing the paywalled article
+ * @returns {Promise<{ archiveUrl: string, archiveTabId: number }>}
+ */
+async function handleBypassViaArchive(tabId) {
+  const settings = await getSettings();
+  const tab = await chrome.tabs.get(tabId);
+  const originalUrl = tab.url;
+
+  const mirror = await pickWorkingMirror();
+  // ?run=1 asks archive.is to create a fresh snapshot if none exists
+  const archiveUrl = `${mirror}/newest/${originalUrl}`;
+
+  let archiveTab;
+  if (settings.openInNewTab !== false) {
+    archiveTab = await chrome.tabs.create({ url: archiveUrl, index: tab.index + 1 });
+  } else {
+    archiveTab = await chrome.tabs.update(tabId, { url: archiveUrl });
+  }
+
+  // 30-second hard fallback: if archive-detector.js never reports back
+  const fallbackTimer = setTimeout(async () => {
+    const entry = _archiveTabs.get(archiveTab.id);
+    if (entry && !entry.resolved) {
+      entry.resolved = true;
+      _archiveTabs.delete(archiveTab.id);
+      console.log('[bypass] archive.is 30 s timeout — triggering local DOM bypass');
+      await handleBypass(entry.originalTabId).catch(() => {});
+    }
+  }, 30000);
+
+  _archiveTabs.set(archiveTab.id, {
+    originalUrl,
+    originalTabId: tabId,
+    mirror,
+    resolved: false,
+    fallbackTimer,
+  });
+
+  return { archiveUrl, archiveTabId: archiveTab.id };
 }
 
 // ── Context menu ─────────────────────────────────────────────────────────
@@ -430,9 +560,11 @@ chrome.runtime.onInstalled.addListener(() => {
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === 'bypass-paywall' && tab) {
-    handleBypass(tab.id).catch(err =>
-      console.warn('[bypass] Context menu bypass failed:', err.message)
-    );
+    // Primary: archive.is. Falls back to local DOM automatically if it fails.
+    handleBypassViaArchive(tab.id).catch(err => {
+      console.warn('[bypass] Context menu archive.is failed, trying local DOM:', err.message);
+      handleBypass(tab.id).catch(() => {});
+    });
   }
 });
 
@@ -461,9 +593,31 @@ async function getPaywallDomains() {
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.status !== 'complete' || !tab.url) return;
-  // Only run on http/https pages
   if (!tab.url.startsWith('http')) return;
 
+  // ── Inject archive-detector.js on tabs we opened via handleBypassViaArchive ──
+  if (_archiveTabs.has(tabId)) {
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ['archive-detector.js'],
+      });
+    } catch (err) {
+      // The tab may have navigated away or be on a restricted URL
+      console.warn('[bypass] Could not inject archive-detector.js:', err.message);
+      // Treat as failure — trigger local fallback
+      const entry = _archiveTabs.get(tabId);
+      if (entry && !entry.resolved) {
+        entry.resolved = true;
+        _archiveTabs.delete(tabId);
+        clearTimeout(entry.fallbackTimer);
+        handleBypass(entry.originalTabId).catch(() => {});
+      }
+    }
+    return; // Don't run auto-bypass logic on archive.* tabs
+  }
+
+  // ── Auto-bypass on known paywall domains ─────────────────────────────────
   const { autoBypass } = await getAutoBypassSetting();
   if (!autoBypass) return;
 
@@ -479,7 +633,9 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
   // Small delay to let the page finish rendering before bypass
   setTimeout(() => {
-    handleBypass(tabId).catch(err =>
+    // Auto-bypass goes through archive.is too, so the user always gets the
+    // cleanest possible version of the article.
+    handleBypassViaArchive(tabId).catch(err =>
       console.warn('[bypass] Auto-bypass failed on', hostname, err.message)
     );
   }, 1500);

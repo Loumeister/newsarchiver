@@ -14,7 +14,14 @@
     "declarativeNetRequest"
   ],
   "host_permissions": [
-    "<all_urls>"
+    "<all_urls>",
+    "https://archive.today/*",
+    "https://archive.ph/*",
+    "https://archive.is/*",
+    "https://archive.fo/*",
+    "https://archive.li/*",
+    "https://archive.md/*",
+    "https://archive.vn/*"
   ],
   "web_accessible_resources": [
     {
