@@ -156,6 +156,35 @@
     </div>
 
     <div class="card">
+      <div class="setting">
+        <div>
+          <div class="setting-label">Block ads &amp; trackers</div>
+          <div class="setting-desc">
+            Drop known ad, analytics, and tracker requests at the network level and hide
+            ad slots on the page. Runs at page start for cleaner browsing and cleaner
+            archive snapshots. On by default.
+          </div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="adblock-enabled" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="setting-desc" style="margin-top:14px;margin-bottom:8px">
+        Allowlist — one domain per line. Ad blocking is turned off on these sites
+        (and their subdomains).
+      </div>
+      <textarea
+        id="adblock-allowlist"
+        rows="4"
+        placeholder="example.com&#10;another-site.org"
+        style="width:100%;background:#0d1117;color:#c9d1d9;border:1px solid #30363d;border-radius:6px;padding:10px;font-family:monospace;font-size:12px;resize:vertical;box-sizing:border-box"
+      ></textarea>
+      <button id="save-allowlist" class="save-btn" style="margin-top:10px">Save allowlist</button>
+      <div id="adblock-saved" class="saved" style="margin-top:8px">Saved.</div>
+    </div>
+
+    <div class="card">
       <div class="setting-label" style="margin-bottom:8px">Custom rules (JSON)</div>
       <div class="setting-desc" style="margin-bottom:10px">
         Add your own site rules. Must be a valid JSON array of rule objects. Each rule requires

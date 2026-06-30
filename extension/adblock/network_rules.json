@@ -1,0 +1,202 @@
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "requestDomains": [
+        "doubleclick.net",
+        "googlesyndication.com",
+        "googleadservices.com",
+        "google-analytics.com",
+        "googletagmanager.com",
+        "googletagservices.com",
+        "adservice.google.com",
+        "pagead2.googlesyndication.com",
+        "partner.googleadservices.com",
+        "2mdn.net"
+      ],
+      "resourceTypes": [
+        "sub_frame", "script", "image", "xmlhttprequest", "ping",
+        "media", "websocket", "font", "object", "other"
+      ]
+    }
+  },
+  {
+    "id": 2,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "requestDomains": [
+        "amazon-adsystem.com",
+        "adsystem.amazon.com",
+        "adnxs.com",
+        "adnxs-simple.com",
+        "rubiconproject.com",
+        "pubmatic.com",
+        "openx.net",
+        "criteo.com",
+        "criteo.net",
+        "casalemedia.com",
+        "indexww.com",
+        "smartadserver.com",
+        "33across.com",
+        "sharethrough.com",
+        "districtm.io",
+        "gumgum.com",
+        "media.net",
+        "yieldmo.com",
+        "bidswitch.net",
+        "3lift.com"
+      ],
+      "resourceTypes": [
+        "sub_frame", "script", "image", "xmlhttprequest", "ping",
+        "media", "websocket", "font", "object", "other"
+      ]
+    }
+  },
+  {
+    "id": 3,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "requestDomains": [
+        "scorecardresearch.com",
+        "quantserve.com",
+        "quantcount.com",
+        "chartbeat.com",
+        "chartbeat.net",
+        "hotjar.com",
+        "mouseflow.com",
+        "fullstory.com",
+        "mixpanel.com",
+        "segment.com",
+        "segment.io",
+        "amplitude.com",
+        "heap.io",
+        "heapanalytics.com",
+        "newrelic.com",
+        "nr-data.net",
+        "branch.io",
+        "kissmetrics.com",
+        "crazyegg.com",
+        "parsely.com",
+        "parse.ly"
+      ],
+      "resourceTypes": [
+        "sub_frame", "script", "image", "xmlhttprequest", "ping",
+        "media", "websocket", "font", "object", "other"
+      ]
+    }
+  },
+  {
+    "id": 4,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "requestDomains": [
+        "taboola.com",
+        "outbrain.com",
+        "outbrainimg.com",
+        "revcontent.com",
+        "mgid.com",
+        "zergnet.com",
+        "content.ad",
+        "dianomi.com",
+        "plista.com",
+        "adblade.com"
+      ],
+      "resourceTypes": [
+        "sub_frame", "script", "image", "xmlhttprequest", "ping",
+        "media", "websocket", "font", "object", "other"
+      ]
+    }
+  },
+  {
+    "id": 5,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "requestDomains": [
+        "facebook.net",
+        "connect.facebook.net",
+        "ads-twitter.com",
+        "analytics.twitter.com",
+        "bat.bing.com",
+        "ads.linkedin.com",
+        "px.ads.linkedin.com",
+        "ads.pinterest.com",
+        "ads.tiktok.com",
+        "analytics.tiktok.com",
+        "snap.licdn.com",
+        "sc-static.net"
+      ],
+      "resourceTypes": [
+        "sub_frame", "script", "image", "xmlhttprequest", "ping",
+        "media", "websocket", "font", "object", "other"
+      ]
+    }
+  },
+  {
+    "id": 6,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "requestDomains": [
+        "moatads.com",
+        "adsafeprotected.com",
+        "doubleverify.com",
+        "adform.net",
+        "adroll.com",
+        "advertising.com",
+        "yieldlab.net",
+        "teads.tv",
+        "spotxchange.com",
+        "spotx.tv",
+        "innovid.com",
+        "imrworldwide.com",
+        "demdex.net",
+        "everesttech.net",
+        "rlcdn.com",
+        "agkn.com",
+        "bluekai.com",
+        "crwdcntrl.net",
+        "tapad.com",
+        "exelator.com"
+      ],
+      "resourceTypes": [
+        "sub_frame", "script", "image", "xmlhttprequest", "ping",
+        "media", "websocket", "font", "object", "other"
+      ]
+    }
+  },
+  {
+    "id": 7,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "requestDomains": [
+        "onesignal.com",
+        "pushcrew.com",
+        "pushengage.com",
+        "izooto.com",
+        "sail-horizon.com",
+        "po.st",
+        "addthis.com",
+        "sharethis.com",
+        "disqusads.com",
+        "summerhamster.com",
+        "ad-delivery.net",
+        "adsrvr.org",
+        "serving-sys.com",
+        "contextweb.com",
+        "lijit.com",
+        "sonobi.com"
+      ],
+      "resourceTypes": [
+        "sub_frame", "script", "image", "xmlhttprequest", "ping",
+        "media", "websocket", "font", "object", "other"
+      ]
+    }
+  }
+]

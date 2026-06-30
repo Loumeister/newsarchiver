@@ -641,6 +641,97 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   }, 1500);
 });
 
+// ── Ad / tracker blocking layer ───────────────────────────────────────────
+//
+// The static "adblock" ruleset (adblock/network_rules.json) drops ad and
+// tracker requests at the network level. The MAIN/ISOLATED content scripts
+// (adblock/scriptlets.js, adblock/cosmetic.js) defuse ad SDKs and hide ad
+// containers. This block keeps the network ruleset in sync with the user's
+// settings stored in chrome.storage.local:
+//   - adBlockEnabled  (bool, default true)  → enable/disable the whole layer
+//   - adBlockAllowlist (string[] of hosts)  → don't block on these sites
+
+const ADBLOCK_RULESET_ID = 'adblock';
+// Dynamic rule that allowlists requests initiated from user-chosen hosts.
+// Sits in the dynamic-rule namespace alongside the Googlebot rule (id 1), so
+// we use a high, reserved id to avoid collisions.
+const ADBLOCK_ALLOWLIST_RULE_ID = 9001;
+
+const ADBLOCK_RESOURCE_TYPES = [
+  'sub_frame', 'script', 'image', 'xmlhttprequest', 'ping',
+  'media', 'websocket', 'font', 'object', 'other',
+];
+
+/** Read ad-block settings with defaults (blocking on by default). */
+async function getAdBlockSettings() {
+  return new Promise(resolve => {
+    chrome.storage.local.get({ adBlockEnabled: true, adBlockAllowlist: [] }, resolve);
+  });
+}
+
+/** Enable or disable the static network ruleset to match adBlockEnabled. */
+async function syncAdBlockRuleset(enabled) {
+  try {
+    await chrome.declarativeNetRequest.updateEnabledRulesets(
+      enabled
+        ? { enableRulesetIds: [ADBLOCK_RULESET_ID], disableRulesetIds: [] }
+        : { enableRulesetIds: [], disableRulesetIds: [ADBLOCK_RULESET_ID] }
+    );
+  } catch (err) {
+    console.warn('[adblock] Could not toggle ruleset:', err.message);
+  }
+}
+
+/**
+ * Rebuild the dynamic allow rule so requests initiated from allowlisted hosts
+ * bypass the block rules. Higher priority than the static block rules (1).
+ */
+async function syncAdBlockAllowlist(allowlist) {
+  const domains = (Array.isArray(allowlist) ? allowlist : [])
+    .map(d => String(d).trim().replace(/^www\./, ''))
+    .filter(Boolean);
+
+  const addRules = domains.length
+    ? [{
+        id: ADBLOCK_ALLOWLIST_RULE_ID,
+        priority: 2,
+        action: { type: 'allow' },
+        condition: {
+          initiatorDomains: domains,
+          resourceTypes: ADBLOCK_RESOURCE_TYPES,
+        },
+      }]
+    : [];
+
+  try {
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds: [ADBLOCK_ALLOWLIST_RULE_ID],
+      addRules,
+    });
+  } catch (err) {
+    console.warn('[adblock] Could not sync allowlist rule:', err.message);
+  }
+}
+
+/** Reconcile the whole network layer with current settings. */
+async function reconcileAdBlock() {
+  const { adBlockEnabled, adBlockAllowlist } = await getAdBlockSettings();
+  await syncAdBlockRuleset(adBlockEnabled);
+  await syncAdBlockAllowlist(adBlockEnabled ? adBlockAllowlist : []);
+}
+
+// Reconcile on install/update and on browser startup.
+chrome.runtime.onInstalled.addListener(() => { reconcileAdBlock(); });
+chrome.runtime.onStartup.addListener(() => { reconcileAdBlock(); });
+
+// React to settings changes written by the options page.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local') return;
+  if ('adBlockEnabled' in changes || 'adBlockAllowlist' in changes) {
+    reconcileAdBlock();
+  }
+});
+
 /**
  * Main archive pipeline.
  * @param {number} tabId - The tab to archive
