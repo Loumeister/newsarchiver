@@ -656,11 +656,20 @@ const ADBLOCK_RULESET_ID = 'adblock';
 // Sits in the dynamic-rule namespace alongside the Googlebot rule (id 1), so
 // we use a high, reserved id to avoid collisions.
 const ADBLOCK_ALLOWLIST_RULE_ID = 9001;
+// Id for the dynamically-registered MAIN-world scriptlet content script.
+const ADBLOCK_SCRIPTLET_ID = 'newsarchive-adblock-scriptlets';
 
 const ADBLOCK_RESOURCE_TYPES = [
   'sub_frame', 'script', 'image', 'xmlhttprequest', 'ping',
   'media', 'websocket', 'font', 'object', 'other',
 ];
+
+/** Normalise a list of host entries to lowercase, www-stripped domains. */
+function normalizeDomains(list) {
+  return (Array.isArray(list) ? list : [])
+    .map(d => String(d).trim().toLowerCase().replace(/^www\./, ''))
+    .filter(Boolean);
+}
 
 /** Read ad-block settings with defaults (blocking on by default). */
 async function getAdBlockSettings() {
@@ -687,9 +696,7 @@ async function syncAdBlockRuleset(enabled) {
  * bypass the block rules. Higher priority than the static block rules (1).
  */
 async function syncAdBlockAllowlist(allowlist) {
-  const domains = (Array.isArray(allowlist) ? allowlist : [])
-    .map(d => String(d).trim().replace(/^www\./, ''))
-    .filter(Boolean);
+  const domains = normalizeDomains(allowlist);
 
   const addRules = domains.length
     ? [{
@@ -713,11 +720,48 @@ async function syncAdBlockAllowlist(allowlist) {
   }
 }
 
-/** Reconcile the whole network layer with current settings. */
+/**
+ * Register (or unregister) the MAIN-world scriptlet so the global toggle and
+ * the per-site allowlist actually govern it. Registering dynamically — instead
+ * of declaring it statically in the manifest — lets us drop it entirely when
+ * blocking is off and exclude allowlisted hosts via `excludeMatches`, while
+ * still injecting at document_start (before the page's own scripts run).
+ */
+async function syncAdBlockScriptlet(enabled, allowlist) {
+  // Always clear any prior registration first so this is idempotent regardless
+  // of which trigger (install / startup / settings change) called us.
+  try {
+    await chrome.scripting.unregisterContentScripts({ ids: [ADBLOCK_SCRIPTLET_ID] });
+  } catch { /* nothing registered yet */ }
+
+  if (!enabled) return;
+
+  const excludeMatches = normalizeDomains(allowlist)
+    .flatMap(d => [`*://${d}/*`, `*://*.${d}/*`]);
+
+  try {
+    await chrome.scripting.registerContentScripts([{
+      id: ADBLOCK_SCRIPTLET_ID,
+      js: ['adblock/scriptlets.js'],
+      matches: ['http://*/*', 'https://*/*'],
+      excludeMatches,
+      runAt: 'document_start',
+      allFrames: true,
+      world: 'MAIN',
+      persistAcrossSessions: false,
+    }]);
+  } catch (err) {
+    console.warn('[adblock] Could not register MAIN scriptlet:', err.message);
+  }
+}
+
+/** Reconcile the whole ad-block layer (network + scriptlet) with settings. */
 async function reconcileAdBlock() {
   const { adBlockEnabled, adBlockAllowlist } = await getAdBlockSettings();
+  const allowlist = normalizeDomains(adBlockAllowlist);
   await syncAdBlockRuleset(adBlockEnabled);
-  await syncAdBlockAllowlist(adBlockEnabled ? adBlockAllowlist : []);
+  await syncAdBlockAllowlist(adBlockEnabled ? allowlist : []);
+  await syncAdBlockScriptlet(adBlockEnabled, allowlist);
 }
 
 // Reconcile on install/update and on browser startup.

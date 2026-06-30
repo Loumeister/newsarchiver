@@ -68,7 +68,10 @@ happens *before* the page's own scripts execute:
      SDKs (`googletag`, `adsbygoogle`) and common anti-adblock detectors
      (`FuckAdBlock`, `BlockAdBlock`, `canRunAds`, …) so pages render their
      article instead of an "ad blocker detected" wall. It never removes page
-     content.
+     content. It is registered dynamically (`chrome.scripting`) at
+     `document_start` so the toggle and allowlist can govern it — it is
+     unregistered when blocking is off and excluded (`excludeMatches`) on
+     allowlisted hosts.
    - `adblock/cosmetic.js` (**ISOLATED world**) hides ad/widget containers with
      an injected stylesheet ("hide first") and strips late-injected ad nodes via
      a short-lived `MutationObserver`. Selectors are conservative (named ad
@@ -78,9 +81,10 @@ Because trackers and ad iframes never load, **archive snapshots come out
 cleaner and capture faster**.
 
 Blocking is on by default. Toggle it off globally, or add specific domains to
-the **allowlist**, in Settings. Allowlisting a host re-enables ads everywhere on
-that site (a high-priority dynamic `allow` rule undoes the network blocks, and
-the cosmetic layer pulls its stylesheet back out).
+the **allowlist**, in Settings. Allowlisting a host fully re-enables ads on that
+site (and its subdomains): a high-priority dynamic `allow` rule undoes the
+network blocks, the cosmetic layer pulls its stylesheet back out, and the
+MAIN-world scriptlet is excluded from the page entirely.
 
 ## How it works
 

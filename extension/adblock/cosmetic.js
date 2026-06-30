@@ -121,8 +121,9 @@
   observer.observe(document.documentElement, { childList: true, subtree: true });
 
   // Re-assert the stylesheet once the head is ready, then stop observing after
-  // the page has settled to avoid long-lived overhead.
-  document.addEventListener('DOMContentLoaded', injectStyle, { once: true });
+  // the page has settled to avoid long-lived overhead. Skip re-injection if
+  // Phase 2 has since determined this host is allowlisted / blocking is off.
+  document.addEventListener('DOMContentLoaded', () => { if (active) injectStyle(); }, { once: true });
   setTimeout(() => observer.disconnect(), 20000);
 
   // React to live allowlist/toggle changes without a reload.
