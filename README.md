@@ -80,7 +80,7 @@ data/
 
 ## Chrome Extension
 
-A Chrome extension version is also available that runs entirely in your browser — no server needed. See [extension/README.md](extension/README.md) for installation and usage instructions.
+A Chrome extension version is also available that runs entirely in your browser — no server needed. It also includes a built-in **ad & tracker blocker** (a static `declarativeNetRequest` ruleset plus `document_start` MAIN/ISOLATED content scripts, adapted from [medoxisto/ad-blocker-chrome-extension](https://github.com/medoxisto/ad-blocker-chrome-extension)) for cleaner browsing and cleaner snapshots. See [extension/README.md](extension/README.md) for installation and usage instructions.
 
 ## Recommended Agency Team
 

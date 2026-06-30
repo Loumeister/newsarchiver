@@ -29,6 +29,24 @@
       "matches": ["<all_urls>"]
     }
   ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "adblock",
+        "enabled": true,
+        "path": "adblock/network_rules.json"
+      }
+    ]
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["adblock/cosmetic.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "world": "ISOLATED"
+    }
+  ],
   "background": {
     "service_worker": "background.js",
     "type": "module"

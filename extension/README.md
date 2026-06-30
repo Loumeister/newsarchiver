@@ -47,6 +47,44 @@ Click **Settings** at the bottom of the popup (or right-click the extension icon
 | Setting | Default | Description |
 |---------|---------|-------------|
 | Keep inline scripts | Off | Preserve inline JavaScript from the original page. **Warning:** enabling this may re-enable paywalls, trackers, or other unwanted behavior. |
+| Block ads & trackers | On | Drop known ad/tracker requests at the network level and hide ad slots on the page. Cleaner browsing and cleaner snapshots. |
+| Ad-block allowlist | _empty_ | Domains (one per line) where ad blocking is turned off, including their subdomains. |
+
+## Ad & tracker blocking
+
+The extension ships a built-in ad/tracker blocker, adapted from the
+[medoxisto/ad-blocker-chrome-extension](https://github.com/medoxisto/ad-blocker-chrome-extension)
+design. It runs in two layers, both kicking in at `document_start` so blocking
+happens *before* the page's own scripts execute:
+
+1. **Network layer** — a static [`declarativeNetRequest`](https://developer.chrome.com/docs/extensions/reference/api/declarativeNetRequest)
+   ruleset (`adblock/network_rules.json`) drops requests to known ad, analytics,
+   and tracker domains (Google Ads, Taboola/Outbrain, Criteo, Scorecard, Hotjar,
+   social pixels, and more).
+
+2. **Content layer** — two content scripts, mirroring the upstream MAIN/ISOLATED
+   split:
+   - `adblock/scriptlets.js` (**MAIN world**) installs quiet no-op stubs for ad
+     SDKs (`googletag`, `adsbygoogle`) and common anti-adblock detectors
+     (`FuckAdBlock`, `BlockAdBlock`, `canRunAds`, …) so pages render their
+     article instead of an "ad blocker detected" wall. It never removes page
+     content. It is registered dynamically (`chrome.scripting`) at
+     `document_start` so the toggle and allowlist can govern it — it is
+     unregistered when blocking is off and excluded (`excludeMatches`) on
+     allowlisted hosts.
+   - `adblock/cosmetic.js` (**ISOLATED world**) hides ad/widget containers with
+     an injected stylesheet ("hide first") and strips late-injected ad nodes via
+     a short-lived `MutationObserver`. Selectors are conservative (named ad
+     slots, not bare `ad` substrings) so article content is never hidden.
+
+Because trackers and ad iframes never load, **archive snapshots come out
+cleaner and capture faster**.
+
+Blocking is on by default. Toggle it off globally, or add specific domains to
+the **allowlist**, in Settings. Allowlisting a host fully re-enables ads on that
+site (and its subdomains): a high-priority dynamic `allow` rule undoes the
+network blocks, the cosmetic layer pulls its stylesheet back out, and the
+MAIN-world scriptlet is excluded from the page entirely.
 
 ## How it works
 
@@ -100,6 +138,7 @@ This extension:
 | `storage` | Store your settings (keep scripts toggle) |
 | `downloads` | Enable the "Download" button to save snapshots as HTML files |
 | `tabs` | Capture screenshots and get tab information |
+| `declarativeNetRequest` | Block ad/tracker requests and override headers for archival fetches |
 | `<all_urls>` | Fetch assets (images, CSS, fonts) from any domain for archiving |
 
 ## Legal disclaimer

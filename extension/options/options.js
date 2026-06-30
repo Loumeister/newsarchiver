@@ -7,6 +7,10 @@ const customRulesError = document.getElementById('custom-rules-error');
 const saveCustomRulesBtn = document.getElementById('save-custom-rules');
 const refreshRulesBtn = document.getElementById('refresh-rules');
 const rulesStatus = document.getElementById('rules-status');
+const adBlockToggle = document.getElementById('adblock-enabled');
+const adBlockAllowlistArea = document.getElementById('adblock-allowlist');
+const saveAllowlistBtn = document.getElementById('save-allowlist');
+const adBlockSaved = document.getElementById('adblock-saved');
 
 function showSaved(el) {
   el.classList.add('visible');
@@ -51,6 +55,30 @@ saveCustomRulesBtn.addEventListener('click', () => {
   }
   customRulesError.style.display = 'none';
   chrome.storage.sync.set({ customRules: raw }, () => showSaved(savedMsg));
+});
+
+// ── Ad / tracker blocking (stored in chrome.storage.local) ────────────────
+chrome.storage.local.get(
+  { adBlockEnabled: true, adBlockAllowlist: [] },
+  (cfg) => {
+    adBlockToggle.checked = cfg.adBlockEnabled;
+    adBlockAllowlistArea.value = (cfg.adBlockAllowlist || []).join('\n');
+  }
+);
+
+adBlockToggle.addEventListener('change', () => {
+  chrome.storage.local.set({ adBlockEnabled: adBlockToggle.checked }, () => showSaved(adBlockSaved));
+});
+
+saveAllowlistBtn.addEventListener('click', () => {
+  const domains = adBlockAllowlistArea.value
+    .split('\n')
+    .map(d => d.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/^www\./, ''))
+    .filter(Boolean);
+  // De-duplicate while preserving order
+  const unique = [...new Set(domains)];
+  adBlockAllowlistArea.value = unique.join('\n');
+  chrome.storage.local.set({ adBlockAllowlist: unique }, () => showSaved(adBlockSaved));
 });
 
 // Refresh built-in rules (re-reads bundled rules.json via background message)
